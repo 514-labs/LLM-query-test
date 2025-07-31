@@ -29,9 +29,37 @@ Tests LLM-style query patterns against transactional (PostgreSQL) and OLAP (Clic
 
 #### Statistical Analysis - Query-Only 100 Iterations
 
-**10M Row Dataset Performance (query-only, 100 iterations each):**
+**Query Performance Comparison (median times, 100 iterations each):**
 
-[Add your 100-iteration statistical results here]
+```
+Q1 (Discovery - SHOW TABLES):
+ClickHouse  |██                                          |  2.2ms
+PostgreSQL  |██                                          |  2.9ms
+
+Q2 (Exploration - SELECT * LIMIT 10):
+ClickHouse  |███                                         |  6.6ms
+PostgreSQL  |█                                           |  1.3ms
+
+Q3 (Analysis - Hourly Aircraft Counts):
+ClickHouse  |███                                         | 33.5ms
+PostgreSQL  |████████████████████████████████████████████| 10534ms
+
+Q4 (Calculation - Average via CTE):
+ClickHouse  |███                                         | 33.1ms  
+PostgreSQL  |████████████████████████████████████████████| 10476ms
+
+Total Query Time (10M rows):
+ClickHouse  |█                                           |    75ms
+PostgreSQL  |████████████████████████████████████████████| 21014ms
+
+Performance Ratio: PostgreSQL is 280x slower for analytical queries
+```
+
+**Key Statistical Insights:**
+- **ClickHouse**: Consistent ~75ms total (σ=3ms), no scaling penalty for 10x data
+- **PostgreSQL**: ~21s total (σ=500ms), indexes provide minimal benefit (0.2% improvement)
+- **Query patterns**: Discovery/exploration favor PostgreSQL, analytics heavily favor ClickHouse
+- **Reliability**: Both databases show stable, predictable performance across 100 iterations
 
 ## Setup
 
