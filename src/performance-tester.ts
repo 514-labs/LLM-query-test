@@ -42,6 +42,11 @@ export class PerformanceTester {
 
   async initialize(): Promise<void> {
     console.log('Initializing database connections...');
+    
+    // Ensure databases exist before connecting
+    await this.clickhouse.ensureDatabaseExists();
+    await this.postgresql.ensureDatabaseExists();
+    
     await this.clickhouse.connect();
     await this.postgresql.connect();
     console.log('Database connections established');

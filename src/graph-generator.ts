@@ -20,8 +20,8 @@ export class ASCIIGraphGenerator {
   private static readonly README_PATH = path.join(process.cwd(), 'README.md');
 
   static generateGraphs(updateReadme: boolean = false): void {
-    console.log('📊 Performance Summary');
-    console.log('=' .repeat(40));
+    console.log('📊 Performance Summary Across Dataset Sizes');
+    console.log('=' .repeat(50));
 
     // Find JSON result files in output directory
     const files = this.findResultFiles();
@@ -31,20 +31,17 @@ export class ASCIIGraphGenerator {
       return;
     }
 
-    // Get most recent file of each type
-    const { loadTest, queryTest } = this.getMostRecentFiles(files);
+    // Get latest results for each dataset size
+    const resultsBySize = this.getResultsByDatasetSize(files);
 
-    if (queryTest) {
-      console.log('\n⚡ Query Performance (median times)');
-      console.log('-'.repeat(40));
-      this.generateCompactQueryGraph(queryTest);
+    if (Object.keys(resultsBySize).length === 0) {
+      console.log('❌ No valid results found');
+      return;
     }
 
-    if (loadTest) {
-      console.log('\n🚀 Load Test Performance');
-      console.log('-'.repeat(40));
-      this.generateCompactLoadGraph(loadTest);
-    }
+    console.log('\n⚡ Query Performance Across Dataset Sizes');
+    console.log('-'.repeat(50));
+    this.generateDatasetSizeComparison(resultsBySize);
 
     if (updateReadme) {
       console.log('\n📝 Updating README...');
@@ -255,6 +252,168 @@ export class ASCIIGraphGenerator {
     }
     
     return grouped;
+  }
+
+  private static getResultsByDatasetSize(files: Array<{name: string, path: string}>): Record<string, TestResults[]> {
+    const sizeMap: Record<string, {results: TestResults[], timestamp: number}> = {};
+
+    for (const file of files) {
+      try {
+        const results = this.loadResults(file.path);
+        if (results.length === 0) continue;
+
+        // Extract timestamp from filename
+        const timestampMatch = file.name.match(/(\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2})/);
+        const timestamp = timestampMatch ? new Date(timestampMatch[1].replace('_', 'T').replace(/-/g, ':')).getTime() : 0;
+
+        // Group by dataset size
+        const grouped = this.groupBySize(results);
+        for (const [size, sizeResults] of Object.entries(grouped)) {
+          const key = size;
+          
+          // Keep only the most recent results for each size
+          if (!sizeMap[key] || timestamp > sizeMap[key].timestamp) {
+            sizeMap[key] = { results: sizeResults, timestamp };
+          }
+        }
+      } catch (error) {
+        console.log(`⚠️  Skipping corrupted file: ${file.name}`);
+      }
+    }
+
+    // Convert to just results without timestamps
+    const result: Record<string, TestResults[]> = {};
+    for (const [size, data] of Object.entries(sizeMap)) {
+      result[size] = data.results;
+    }
+
+    return result;
+  }
+
+  private static generateDatasetSizeComparison(resultsBySize: Record<string, TestResults[]>): void {
+    // Sort sizes numerically
+    const sortedSizes = Object.keys(resultsBySize).sort((a, b) => {
+      const aNum = this.parseDatasetSize(a);
+      const bNum = this.parseDatasetSize(b);
+      return aNum - bNum;
+    });
+
+    if (sortedSizes.length === 0) {
+      console.log('No results to display');
+      return;
+    }
+
+    // Show overview table
+    console.log('\n📊 Performance Overview by Dataset Size');
+    console.log('-'.repeat(80));
+    
+    // Create headers
+    const headers = ['Size', 'ClickHouse (ms)', 'PostgreSQL+Idx (ms)', 'PostgreSQL (ms)', 'CH Advantage'];
+    const rows = [headers];
+
+    for (const size of sortedSizes) {
+      const results = resultsBySize[size];
+      const ch = results.find(r => r.configuration.database === 'clickhouse');
+      const pgIdx = results.find(r => r.configuration.database === 'postgresql' && r.configuration.withIndex);
+      const pgNoIdx = results.find(r => r.configuration.database === 'postgresql' && !r.configuration.withIndex);
+
+      const chTime = ch ? ch.totalQueryTime.toFixed(1) : 'N/A';
+      const pgIdxTime = pgIdx ? pgIdx.totalQueryTime.toFixed(1) : 'N/A';
+      const pgNoIdxTime = pgNoIdx ? pgNoIdx.totalQueryTime.toFixed(1) : 'N/A';
+      
+      let advantage = 'N/A';
+      if (ch && pgIdx) {
+        const ratio = pgIdx.totalQueryTime / ch.totalQueryTime;
+        advantage = ratio > 1.2 ? `${ratio.toFixed(1)}x faster` : 
+                   ratio < 0.8 ? `${(1/ratio).toFixed(1)}x slower` : 'Similar';
+      }
+
+      rows.push([size, chTime, pgIdxTime, pgNoIdxTime, advantage]);
+    }
+
+    this.printTable(rows);
+
+    // Generate individual graphs for each query type
+    console.log('\n📈 Query Type Breakdown');
+    console.log('-'.repeat(50));
+    
+    const queryNames = ['Q1 (metadata)', 'Q2 (sample)', 'Q3 (analytical)', 'Q4 (analytical)'];
+    
+    for (let queryIndex = 0; queryIndex < 4; queryIndex++) {
+      console.log(`\n${queryNames[queryIndex]}:`);
+      
+      const graphData: Array<{label: string, value: number}> = [];
+      
+      for (const size of sortedSizes) {
+        const results = resultsBySize[size];
+        const ch = results.find(r => r.configuration.database === 'clickhouse');
+        const pg = results.find(r => r.configuration.database === 'postgresql' && !r.configuration.withIndex);
+        
+        if (ch && ch.queryResults[queryIndex]) {
+          graphData.push({
+            label: `${size} CH`,
+            value: ch.queryResults[queryIndex].duration
+          });
+        }
+        
+        if (pg && pg.queryResults[queryIndex]) {
+          graphData.push({
+            label: `${size} PG`,
+            value: pg.queryResults[queryIndex].duration
+          });
+        }
+      }
+      
+      if (graphData.length > 0) {
+        this.createHorizontalBarChart(graphData, 'Time (ms)', 60);
+      }
+    }
+  }
+
+  private static parseDatasetSize(size: string): number {
+    const match = size.match(/^([\d.]+)([KMB]?)$/);
+    if (!match) return parseInt(size.replace(/\D/g, ''));
+    
+    const num = parseFloat(match[1]);
+    const unit = match[2];
+    
+    switch (unit) {
+      case 'K': return num * 1000;
+      case 'M': return num * 1000000;
+      case 'B': return num * 1000000000;
+      default: return num;
+    }
+  }
+
+  private static printTable(data: string[][]): void {
+    if (data.length === 0) return;
+
+    // Calculate column widths
+    const columnWidths = data[0].map((_, colIndex) => 
+      Math.max(...data.map(row => String(row[colIndex] || '').length))
+    );
+
+    const printRow = (row: string[], separator = ' ') => {
+      const formattedRow = row.map((cell, index) => 
+        String(cell || '').padEnd(columnWidths[index])
+      ).join(separator + '|' + separator);
+      console.log('|' + separator + formattedRow + separator + '|');
+    };
+
+    // Print header
+    const horizontalLine = '+' + columnWidths.map(width => 
+      '-'.repeat(width + 2)
+    ).join('+') + '+';
+    
+    console.log(horizontalLine);
+    printRow(data[0]);
+    console.log(horizontalLine);
+    
+    // Print data rows
+    for (let i = 1; i < data.length; i++) {
+      printRow(data[i]);
+    }
+    console.log(horizontalLine);
   }
 
   private static getMostRecentFiles(files: Array<{name: string, path: string}>): {
