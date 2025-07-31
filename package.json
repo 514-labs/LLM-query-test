@@ -1,0 +1,23 @@
+{
+  "name": "db-performance-tester",
+  "version": "1.0.0",
+  "description": "Performance testing application for ClickHouse vs PostgreSQL",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "test": "npm run build && npm start"
+  },
+  "dependencies": {
+    "@clickhouse/client": "^0.2.5",
+    "pg": "^8.11.3",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/pg": "^8.10.9",
+    "typescript": "^5.3.2",
+    "ts-node": "^10.9.1"
+  }
+}
