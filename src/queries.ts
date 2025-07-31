@@ -8,90 +8,82 @@ export interface QueryResult {
 export class TestQueries {
   static getQueries() {
     const currentTime = new Date();
-    const oneHourAgo = new Date(currentTime.getTime() - 60 * 60 * 1000);
-    const timeFilter = oneHourAgo.toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, '');
+    const oneDayAgo = new Date(currentTime.getTime() - 24 * 60 * 60 * 1000);
+    const timeFilter = oneDayAgo.toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, '');
     
     return {
-      q1_recent_aircraft_by_time: {
-        name: 'Q1 Recent aircraft in last hour',
+      q1_show_tables: {
+        name: 'Q1 Show tables',
+        clickhouse: `SHOW TABLES`,
+        postgresql: `SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'`
+      },
+      q2_explore_schema: {
+        name: 'Q2 Explore schema with sample data',
         clickhouse: `
-          SELECT hex, flight, lat, lon, alt_baro, timestamp
-          FROM performance_test 
-          WHERE timestamp >= '${timeFilter}'
-          ORDER BY timestamp DESC
-          LIMIT 1000
+          SELECT *
+          FROM performance_test
+          LIMIT 10
         `,
         postgresql: `
-          SELECT hex, flight, lat, lon, alt_baro, timestamp
-          FROM performance_test 
-          WHERE timestamp >= '${timeFilter}'::timestamp
-          ORDER BY timestamp DESC
-          LIMIT 1000
+          SELECT *
+          FROM performance_test
+          LIMIT 10
         `
       },
-      q2_aircraft_track_history: {
-        name: 'Q2 Aircraft track history',
+      q3_hourly_aircraft_counts: {
+        name: 'Q3 Hourly aircraft counts',
         clickhouse: `
-          SELECT hex, flight, lat, lon, alt_baro, gs, track, timestamp
-          FROM performance_test 
-          WHERE hex IN (SELECT hex FROM performance_test LIMIT 1)
-          ORDER BY timestamp
+          SELECT
+            toStartOfHour(timestamp) AS hour_bucket,
+            count(DISTINCT hex) AS unique_aircraft_count
+          FROM performance_test
+          WHERE
+            timestamp >= '${timeFilter}'
+            AND alt_baro_is_ground = false
+          GROUP BY hour_bucket
+          ORDER BY hour_bucket ASC
         `,
         postgresql: `
-          SELECT hex, flight, lat, lon, alt_baro, gs, track, timestamp
-          FROM performance_test 
-          WHERE hex = (SELECT hex FROM performance_test LIMIT 1)
-          ORDER BY timestamp
+          SELECT
+            date_trunc('hour', timestamp) AS hour_bucket,
+            count(DISTINCT hex) AS unique_aircraft_count
+          FROM performance_test
+          WHERE
+            timestamp >= '${timeFilter}'::timestamp
+            AND alt_baro_is_ground = false
+          GROUP BY hour_bucket
+          ORDER BY hour_bucket ASC
         `
       },
-      q3_high_altitude_aircraft: {
-        name: 'Q3 High altitude aircraft',
+      q4_average_hourly_aircraft: {
+        name: 'Q4 Average hourly aircraft calculation',
         clickhouse: `
-          SELECT 
-            hex, flight, category, alt_baro, lat, lon, timestamp
-          FROM performance_test 
-          WHERE alt_baro > 30000 
-            AND timestamp >= '${timeFilter}'
-          ORDER BY alt_baro DESC
-          LIMIT 500
+          WITH HourlyAircraftCounts AS (
+            SELECT
+              toStartOfHour(timestamp) AS hour_bucket,
+              count(DISTINCT hex) AS unique_aircraft_count
+            FROM performance_test
+            WHERE
+              timestamp >= '${timeFilter}'
+              AND alt_baro_is_ground = false
+            GROUP BY hour_bucket
+          )
+          SELECT avg(unique_aircraft_count) AS average_hourly_aircraft
+          FROM HourlyAircraftCounts
         `,
         postgresql: `
-          SELECT 
-            hex, flight, category, alt_baro, lat, lon, timestamp
-          FROM performance_test 
-          WHERE alt_baro > 30000 
-            AND timestamp >= '${timeFilter}'::timestamp
-          ORDER BY alt_baro DESC
-          LIMIT 500
-        `
-      },
-      q4_geographic_density: {
-        name: 'Q4 Aircraft density by region',
-        clickhouse: `
-          SELECT 
-            floor(lat * 2) / 2 as lat_bucket,
-            floor(lon * 2) / 2 as lon_bucket,
-            count(*) as aircraft_count,
-            avg(alt_baro) as avg_altitude,
-            count(DISTINCT hex) as unique_aircraft
-          FROM performance_test 
-          WHERE timestamp >= '${timeFilter}'
-          GROUP BY lat_bucket, lon_bucket
-          HAVING aircraft_count > 5
-          ORDER BY aircraft_count DESC
-        `,
-        postgresql: `
-          SELECT 
-            floor(lat * 2) / 2 as lat_bucket,
-            floor(lon * 2) / 2 as lon_bucket,
-            count(*) as aircraft_count,
-            avg(alt_baro) as avg_altitude,
-            count(DISTINCT hex) as unique_aircraft
-          FROM performance_test 
-          WHERE timestamp >= '${timeFilter}'::timestamp
-          GROUP BY lat_bucket, lon_bucket
-          HAVING count(*) > 5
-          ORDER BY aircraft_count DESC
+          WITH HourlyAircraftCounts AS (
+            SELECT
+              date_trunc('hour', timestamp) AS hour_bucket,
+              count(DISTINCT hex) AS unique_aircraft_count
+            FROM performance_test
+            WHERE
+              timestamp >= '${timeFilter}'::timestamp
+              AND alt_baro_is_ground = false
+            GROUP BY hour_bucket
+          )
+          SELECT avg(unique_aircraft_count) AS average_hourly_aircraft
+          FROM HourlyAircraftCounts
         `
       }
     };
