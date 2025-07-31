@@ -4,33 +4,37 @@ import { ResultsReporter } from './reporter';
 interface CommandLineArgs {
   queryOnly: boolean;
   iterations: number;
+  timeLimitMinutes: number;
 }
 
 function parseArgs(): CommandLineArgs {
   const args = process.argv.slice(2);
   const queryOnly = args.includes('--query-only');
   const iterationsArg = args.find(arg => arg.startsWith('--iterations='));
-  const iterations = iterationsArg ? parseInt(iterationsArg.split('=')[1]) : 1;
+  const timeLimitArg = args.find(arg => arg.startsWith('--time-limit='));
   
-  return { queryOnly, iterations };
+  const iterations = iterationsArg ? parseInt(iterationsArg.split('=')[1]) : (queryOnly ? 100 : 1);
+  const timeLimitMinutes = timeLimitArg ? parseInt(timeLimitArg.split('=')[1]) : 60;
+  
+  return { queryOnly, iterations, timeLimitMinutes };
 }
 
 async function main() {
   const tester = new PerformanceTester();
-  const { queryOnly, iterations } = parseArgs();
+  const { queryOnly, iterations, timeLimitMinutes } = parseArgs();
   
   try {
     console.log('Starting Database Performance Testing Application');
     console.log('===============================================');
     
     if (queryOnly) {
-      console.log(`Running query-only tests with ${iterations} iterations per configuration`);
+      console.log(`Running query-only tests with ${iterations} iterations per configuration (${timeLimitMinutes}min time limit)`);
     }
     
     await tester.initialize();
     
     const results = queryOnly 
-      ? await tester.runQueryOnlyTests(iterations)
+      ? await tester.runQueryOnlyTests(iterations, timeLimitMinutes)
       : await tester.runAllTests();
     
     ResultsReporter.printResults(results);

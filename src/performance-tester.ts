@@ -17,6 +17,8 @@ export interface TestResults {
   totalQueryTime: number;
   totalTime: number;
   iterations?: number;
+  timedOut?: boolean;
+  completedIterations?: number;
   queryStats?: {
     mean: number[];
     median: number[];
@@ -135,7 +137,7 @@ export class PerformanceTester {
     return allResults;
   }
 
-  async runQueryOnlyTests(iterations: number = 100): Promise<TestResults[]> {
+  async runQueryOnlyTests(iterations: number = 100, timeLimitMinutes: number = 60): Promise<TestResults[]> {
     const configurations: TestConfiguration[] = [
       { rowCount: appConfig.test.smallDataset, withIndex: false, database: 'clickhouse' },
       { rowCount: appConfig.test.largeDataset, withIndex: false, database: 'clickhouse' },
@@ -151,6 +153,7 @@ export class PerformanceTester {
       try {
         console.log(`\n=== Running ${iterations} query iterations: ${config.database.toUpperCase()} ${config.rowCount.toLocaleString()} rows ${config.withIndex ? '(with index)' : '(no index)'} ===`);
         console.log(`    Testing 4 queries: Q1 (discovery), Q2 (exploration), Q3 (aggregation), Q4 (calculation)`);
+        console.log(`    Time limit: ${timeLimitMinutes} minutes`);
         
         const database = config.database === 'clickhouse' ? this.clickhouse : this.postgresql;
         const queries = TestQueries.getQueries();
@@ -158,8 +161,18 @@ export class PerformanceTester {
         // Store all iteration results for statistical analysis
         const allIterationResults: QueryResult[][] = [];
         const startTime = Date.now();
+        const timeLimit = timeLimitMinutes * 60 * 1000; // Convert to milliseconds
+        let timedOut = false;
+        let completedIterations = 0;
         
         for (let iteration = 1; iteration <= iterations; iteration++) {
+          // Check if we've exceeded the time limit
+          if (Date.now() - startTime > timeLimit) {
+            timedOut = true;
+            console.log(`    ⏰ Time limit (${timeLimitMinutes}min) reached after ${completedIterations} iterations`);
+            break;
+          }
+          
           const iterationResults: QueryResult[] = [];
           
           for (const [key, queryDef] of Object.entries(queries)) {
@@ -169,21 +182,27 @@ export class PerformanceTester {
           }
           
           allIterationResults.push(iterationResults);
+          completedIterations = iteration;
           
           if (iteration % 5 === 0 || iteration === iterations) {
             const elapsed = Date.now() - startTime;
             const avgIterationTime = elapsed / iteration;
             const remainingIterations = iterations - iteration;
             const estimatedRemaining = remainingIterations * avgIterationTime;
+            const timeRemaining = timeLimit - elapsed;
             
-            console.log(`   Progress: ${iteration}/${iterations} iterations (${(iteration/iterations*100).toFixed(1)}%) | Elapsed: ${this.formatTime(elapsed)} | ETA: ${this.formatTime(estimatedRemaining)}`);
+            console.log(`   Progress: ${iteration}/${iterations} iterations (${(iteration/iterations*100).toFixed(1)}%) | Elapsed: ${this.formatTime(elapsed)} | ETA: ${this.formatTime(Math.min(estimatedRemaining, timeRemaining))}`);
           }
         }
         
-        console.log(`    Completed all ${iterations} iterations in ${this.formatTime(Date.now() - startTime)}`);
+        if (timedOut) {
+          console.log(`    ⚠️  Test timed out after ${completedIterations}/${iterations} iterations in ${this.formatTime(Date.now() - startTime)}`);
+        } else {
+          console.log(`    ✅ Completed all ${iterations} iterations in ${this.formatTime(Date.now() - startTime)}`);
+        }
         console.log(`    Calculating statistics...`);
         
-        // Calculate statistics
+        // Calculate statistics (even for partial results)
         const queryStats = this.calculateQueryStatistics(allIterationResults);
         
         // Create representative result using median values
@@ -201,6 +220,8 @@ export class PerformanceTester {
           totalQueryTime: queryStats.median.reduce((sum, duration) => sum + duration, 0),
           totalTime: queryStats.median.reduce((sum, duration) => sum + duration, 0),
           iterations,
+          timedOut,
+          completedIterations,
           queryStats
         };
         

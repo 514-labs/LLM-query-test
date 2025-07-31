@@ -27,6 +27,12 @@ Tests LLM-style query patterns against transactional (PostgreSQL) and OLAP (Clic
 - **PostgreSQL indexes** provide minimal benefit (0.9x improvement) for this workload
 - **Query pattern matters**: Discovery queries favor PostgreSQL, aggregation queries favor ClickHouse
 
+#### Statistical Analysis - Query-Only 100 Iterations
+
+**10M Row Dataset Performance (query-only, 100 iterations each):**
+
+[Add your 100-iteration statistical results here]
+
 ## Setup
 
 ### Prerequisites
@@ -61,10 +67,12 @@ npm run build
 ## Usage
 
 ```bash
-npm start                                              # Run full test (with data generation)
-npm run dev                                            # Development mode
-npm run query-test                                     # Query-only test (100 iterations, requires existing data)
-npm run query-test:custom -- --iterations=50          # Query-only test (custom iterations)
+npm start                                          # Run full test (with data generation)
+npm run dev                                        # Development mode
+npm run query-test                                 # Query-only test (100 iterations, 1hr time limit)
+npm run query-test -- --time-limit=120            # Query-only test (2hr time limit)
+npm run query-test -- --iterations=50             # Query-only test (50 iterations)
+npm run query-test -- --iterations=200 --time-limit=30  # 200 iterations with 30min time limit
 ```
 
 ## Configuration
@@ -73,6 +81,14 @@ Edit `.env` file to configure:
 - Database connections (host, port, password)
 - Dataset sizes (small/large test datasets)
 - Batch size for data insertion
+
+### Time Limits
+
+Query-only tests include automatic timeout protection:
+- Default: 60 minutes per test configuration
+- Each database/index combination gets its own time limit
+- Partial results are saved if tests timeout
+- Use `--time-limit=X` to customize (X = minutes)
 
 ## Output
 

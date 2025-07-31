@@ -230,7 +230,10 @@ export class ResultsReporter {
       const dbName = config.database === 'clickhouse' ? 'ClickHouse' : 'PostgreSQL';
       const indexStatus = config.withIndex ? '(indexed)' : '(no index)';
       
-      console.log(`\n${dbName} ${indexStatus}:`);
+      console.log(`\n${dbName} ${indexStatus}${result.timedOut ? ' ⚠️ TIMED OUT' : ''}:`);
+      if (result.timedOut) {
+        console.log(`  Completed: ${result.completedIterations}/${result.iterations} iterations`);
+      }
       
       const queryNames = ['Q1', 'Q2', 'Q3', 'Q4'];
       for (let i = 0; i < queryNames.length; i++) {
