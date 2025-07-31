@@ -15,7 +15,8 @@ export class ResultsReporter {
 
   static printResults(results: TestResults[]): void {
     console.log('\n' + '='.repeat(100));
-    console.log('DATABASE PERFORMANCE COMPARISON - LLM QUERY PATTERNS');
+    const isQueryOnly = results.some(r => r.iterations && r.iterations > 1);
+    console.log(`DATABASE PERFORMANCE COMPARISON - LLM QUERY PATTERNS${isQueryOnly ? ' (QUERY STATS)' : ''}`);
     console.log('='.repeat(100));
 
     // Group results by dataset size for better comparison
@@ -23,10 +24,18 @@ export class ResultsReporter {
     
     for (const [size, sizeResults] of Object.entries(grouped)) {
       console.log(`\n📊 DATASET SIZE: ${size} ROWS`);
+      if (isQueryOnly && sizeResults[0]?.iterations) {
+        console.log(`   (${sizeResults[0].iterations} iterations per test)`);
+      }
       console.log('-'.repeat(80));
       
       const tableData = this.createComparisonTable(sizeResults);
       this.printTable(tableData);
+      
+      // Add statistical details for query-only tests
+      if (isQueryOnly) {
+        this.printQueryStatistics(sizeResults);
+      }
       
       // Add performance insights
       this.printPerformanceInsights(sizeResults);
@@ -209,6 +218,26 @@ export class ResultsReporter {
     }
     
     return consistency;
+  }
+
+  private static printQueryStatistics(results: TestResults[]): void {
+    console.log('\n📈 Query Statistics (ms):');
+    
+    for (const result of results) {
+      if (!result.queryStats) continue;
+      
+      const config = result.configuration;
+      const dbName = config.database === 'clickhouse' ? 'ClickHouse' : 'PostgreSQL';
+      const indexStatus = config.withIndex ? '(indexed)' : '(no index)';
+      
+      console.log(`\n${dbName} ${indexStatus}:`);
+      
+      const queryNames = ['Q1', 'Q2', 'Q3', 'Q4'];
+      for (let i = 0; i < queryNames.length; i++) {
+        const stats = result.queryStats;
+        console.log(`  ${queryNames[i]}: median=${stats.median[i].toFixed(1)} mean=${stats.mean[i].toFixed(1)} ±${stats.stdDev[i].toFixed(1)} range=[${stats.min[i].toFixed(1)}-${stats.max[i].toFixed(1)}]`);
+      }
+    }
   }
 
   private static printTable(data: any[][]): void {

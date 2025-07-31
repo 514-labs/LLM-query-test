@@ -7,7 +7,9 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "dev": "ts-node src/index.ts",
-    "test": "npm run build && npm start"
+    "test": "npm run build && npm start",
+    "query-test": "npm run build && node dist/index.js --query-only --iterations=100",
+    "query-test:custom": "npm run build && node dist/index.js --query-only"
   },
   "dependencies": {
     "@clickhouse/client": "^0.2.5",

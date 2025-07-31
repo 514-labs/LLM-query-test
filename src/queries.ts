@@ -89,8 +89,10 @@ export class TestQueries {
     };
   }
 
-  static async executeQuery(database: any, query: string, queryName: string): Promise<QueryResult> {
-    console.log(`Executing ${queryName}...`);
+  static async executeQuery(database: any, query: string, queryName: string, silent: boolean = false): Promise<QueryResult> {
+    if (!silent) {
+      console.log(`Executing ${queryName}...`);
+    }
     
     const startTime = process.hrtime.bigint();
     
@@ -101,7 +103,9 @@ export class TestQueries {
       const duration = Number(endTime - startTime) / 1_000_000; // Convert to milliseconds
       const rows = Array.isArray(result) ? result.length : (result?.data?.length || 0);
       
-      console.log(`${queryName} completed in ${duration.toFixed(2)}ms, returned ${rows} rows`);
+      if (!silent) {
+        console.log(`${queryName} completed in ${duration.toFixed(2)}ms, returned ${rows} rows`);
+      }
       
       return {
         name: queryName,
