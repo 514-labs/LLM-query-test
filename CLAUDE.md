@@ -4,15 +4,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a database performance testing application that compares ClickHouse (analytical) vs PostgreSQL (transactional) performance. The application tests both databases with identical datasets (1M and 100M rows) and measures execution times for 4 specific queries.
+This is an LLM query performance testing application that compares ClickHouse (OLAP) vs PostgreSQL (OLTP) performance using realistic aircraft tracking data and LLM-style query patterns. The application simulates how an AI would progressively discover and analyze data to answer questions.
 
 ## Commands
 
 ### Development
 - `npm run dev` - Run in development mode with ts-node
 - `npm run build` - Build TypeScript to JavaScript (outputs to `dist/`)
-- `npm start` - Run the compiled application
-- `npm run test` - Build and run the performance tests
+- `npm start` - Run full test with data generation
+- `npm run query-test` - Run query-only test (100 iterations, 60min time limit)
+- `npm run query-test -- --time-limit=120` - Custom time limit
+- `npm run query-test -- --iterations=50` - Custom iterations
 
 ### Database Setup
 Before running tests, ensure database servers are running:
@@ -22,30 +24,50 @@ Before running tests, ensure database servers are running:
 ## Architecture
 
 ### Core Components
-- `PerformanceTester` - Main orchestrator that runs all test configurations
-- `ClickHouseDatabase` & `PostgreSQLDatabase` - Database-specific implementations
-- `DataGenerator` - Creates test datasets and handles batch insertions
-- `TestQueries` - Defines the 4 test queries with database-specific versions
-- `ResultsReporter` - Outputs results to console, JSON, and CSV formats
+- `PerformanceTester` - Main orchestrator that runs test configurations with optional timeout protection
+- `ClickHouseDatabase` & `PostgreSQLDatabase` - Database-specific implementations with optimized schemas
+- `DataGenerator` - Creates realistic aircraft tracking datasets with streaming insertion
+- `TestQueries` - Defines 4 LLM-style queries with database-specific versions
+- `ResultsReporter` - Outputs results with statistical analysis to console, JSON, and CSV
 
 ### Test Flow
+**Full Test (`npm start`):**
 1. Initialize database connections
 2. For each configuration: drop table → create table (±index) → generate data → insert data → run queries
 3. Measure setup time and individual query execution times
-4. Generate comprehensive reports
+
+**Query-Only Test (`npm run query-test`):**
+1. Initialize database connections
+2. For each configuration: run queries N iterations with timeout protection
+3. Calculate statistical analysis (mean, median, std dev, min/max)
+4. Generate comprehensive reports with confidence intervals
 
 ### Configuration
-- Database connections configured via `.env` file (see README for format)
-- Test configurations hardcoded in `PerformanceTester.runAllTests()`:
-  - 1M/100M rows for ClickHouse (no index)
-  - 1M/100M rows for PostgreSQL (with/without timestamp index)
+- Database connections configured via `.env` file
+- Dataset sizes: `SMALL_DATASET_SIZE` (default 1M), `LARGE_DATASET_SIZE` (default 10M)
+- Batch size: `BATCH_SIZE` (default 100K)
+- Test configurations run automatically:
+  - 1M/10M rows ClickHouse (no indexes needed)
+  - 1M/10M rows PostgreSQL (with optimized indexes)  
+  - 1M/10M rows PostgreSQL (no indexes - baseline)
 
-### Data Structure
-Test data uses this schema:
-- `id` (auto-increment)
-- `timestamp` (DateTime/TIMESTAMP)
-- `value` (Float64/REAL)
-- `category` (String/VARCHAR)
+### Data Structure - Aircraft Tracking (46 columns)
+Realistic ADS-B aircraft tracking records with:
+- **Position**: `lat`, `lon`, `alt_baro`, `alt_geom`, `gs`, `track`
+- **Aircraft Info**: `hex`, `flight`, `aircraft_type`, `category`, `r`
+- **Navigation**: `nav_qnh`, `nav_altitude_mcp`, `nav_heading`, `nav_modes`
+- **Status Flags**: `approach`, `autopilot`, `althold`, `lnav`, `tcas`, `alt_baro_is_ground`
+- **Technical**: `squawk`, `emergency`, `transponder_type`, `messages`, `rssi`
+- **Quality Indicators**: `nic`, `rc`, `version`, `nic_baro`, `nac_p`, `nac_v`, `sil`
+- **Arrays**: `nav_modes`, `mlat`, `tisb`
+- **Timestamp**: `timestamp` (DateTime)
+
+### LLM Query Pattern
+Simulates progressive AI discovery for "How many aircraft are in the air on average every minute for the past hour?":
+1. **Q1 Discovery**: `SHOW TABLES` / `information_schema` queries
+2. **Q2 Exploration**: `SELECT * LIMIT 10` to understand data structure  
+3. **Q3 Analysis**: Hourly aircraft counts with time bucketing and filtering
+4. **Q4 Calculation**: CTE-based average calculation across time periods
 
 ### Output
 Results saved to `output/` directory:
