@@ -25,7 +25,6 @@ export const config = {
     batchSize: parseInt(process.env.BATCH_SIZE || '50000'),
     parallelInsert: process.env.PARALLEL_INSERT === 'true',
     parallelWorkers: parseInt(process.env.PARALLEL_WORKERS || '4'),
-    parallelDatabases: process.env.PARALLEL_DATABASES === 'true',
   },
 };
 

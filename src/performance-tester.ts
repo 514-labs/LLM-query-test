@@ -288,9 +288,8 @@ export class PerformanceTester {
     process.on('SIGTERM', shutdownHandler);
 
     try {
-      // Check if we should use parallel database setup
-      if (appConfig.test.parallelDatabases && testType === 'load') {
-        // Group configurations by rowCount for parallel setup
+      if (testType === 'load') {
+        // Load tests: Group configurations by rowCount for parallel setup
         const configsByRowCount = new Map<number, TestConfiguration[]>();
         for (const config of checkpoint.pendingConfigurations) {
           if (!configsByRowCount.has(config.rowCount)) {
@@ -317,26 +316,23 @@ export class PerformanceTester {
             checkpoint = CheckpointManager.updateCheckpoint(checkpoint, config, result);
             await CheckpointManager.saveCheckpoint(checkpoint);
             
-            console.log(`✅ Configuration completed, progress saved`);
+            // Configuration completed silently
           }
         }
       } else {
-        // Traditional sequential approach
+        // Query-only tests: Sequential approach with progress bars
+        console.log(`\n🔍 Running query-only tests: ${queryOnlySettings!.iterations} iterations per database`);
+        console.log(`   Queries: Q1 (metadata), Q2 (sample), Q3 (analytical), Q4 (analytical)`);
+        console.log(`   Time limit: ${queryOnlySettings!.timeLimitMinutes} minutes per database\n`);
+        
         for (const config of checkpoint.pendingConfigurations) {
-          console.log(`\n=== Running ${testType} test: ${config.database.toUpperCase()} ${config.rowCount.toLocaleString()} rows ${config.withIndex ? '(with index)' : '(no index)'} ===`);
-          
-          let result: TestResults;
-          if (testType === 'load') {
-            result = await this.runTest(config);
-          } else {
-            result = await this.runQueryOnlyTest(config, queryOnlySettings!.iterations, queryOnlySettings!.timeLimitMinutes);
-          }
+          const result = await this.runQueryOnlyTest(config, queryOnlySettings!.iterations, queryOnlySettings!.timeLimitMinutes);
           
           // Update checkpoint
           checkpoint = CheckpointManager.updateCheckpoint(checkpoint, config, result);
           await CheckpointManager.saveCheckpoint(checkpoint);
           
-          console.log(`✅ Configuration completed, progress saved`);
+          console.log(); // Add spacing between databases
         }
       }
 
@@ -357,8 +353,36 @@ export class PerformanceTester {
   }
 
   private async runQueryOnlyTest(config: TestConfiguration, iterations: number, timeLimitMinutes: number): Promise<TestResults> {
-    console.log(`    Testing ${iterations} iterations with ${timeLimitMinutes}min timeout`);
-    console.log(`    Queries: Q1 (discovery), Q2 (exploration), Q3 (aggregation), Q4 (calculation)`);
+    const cliProgress = await import('cli-progress');
+    
+    // Helper function to format time in mm:ss
+    const formatTime = (seconds: number): string => {
+      if (seconds < 60) return `${Math.round(seconds)}s`;
+      const minutes = Math.floor(seconds / 60);
+      const remainingSeconds = Math.round(seconds % 60);
+      return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+    };
+
+    // Display name for the database
+    const displayName = config.database === 'clickhouse' ? 'ClickHouse' : 
+                       config.withIndex ? 'PG (w/ Index)' : 'PostgreSQL';
+    
+    // Create progress bar
+    const progressBar = new cliProgress.SingleBar({
+      format: `${displayName.padEnd(15)}: [{bar}] {percentage}% | {value}/{total} | {rate} iter/sec | {duration_formatted} | ETA: {eta_formatted}`,
+      barCompleteChar: '█',
+      barIncompleteChar: '░',
+      hideCursor: true,
+      clearOnComplete: false,
+      stopOnComplete: false,
+      barsize: 30
+    }, cliProgress.Presets.shades_classic);
+
+    progressBar.start(iterations, 0, {
+      rate: '0.0',
+      duration_formatted: '0:00',
+      eta_formatted: 'N/A'
+    });
     
     const database = config.database === 'clickhouse' ? this.clickhouse : this.postgresql;
     const queries = TestQueries.getQueries();
@@ -373,7 +397,6 @@ export class PerformanceTester {
     for (let iteration = 1; iteration <= iterations; iteration++) {
       if (Date.now() - startTime > timeLimit) {
         timedOut = true;
-        console.log(`    ⏰ Time limit reached after ${completedIterations} iterations`);
         break;
       }
       
@@ -388,18 +411,34 @@ export class PerformanceTester {
       allIterationResults.push(iterationResults);
       completedIterations = iteration;
       
-      if (iteration % 5 === 0 || iteration === iterations) {
-        const elapsed = Date.now() - startTime;
-        const avgTime = elapsed / iteration;
-        const remaining = Math.min((iterations - iteration) * avgTime, timeLimit - elapsed);
-        console.log(`   Progress: ${iteration}/${iterations} (${(iteration/iterations*100).toFixed(1)}%) | ETA: ${this.formatTime(remaining)}`);
-      }
+      // Update progress bar
+      const elapsed = (Date.now() - startTime) / 1000;
+      const rate = iteration / elapsed;
+      const remaining = (iterations - iteration) / rate;
+      
+      progressBar.update(iteration, {
+        rate: rate.toFixed(1),
+        duration_formatted: formatTime(elapsed),
+        eta_formatted: isFinite(remaining) ? formatTime(remaining) : 'N/A'
+      });
     }
 
+    // Final update and stop
+    const totalElapsed = (Date.now() - startTime) / 1000;
+    const finalRate = completedIterations / totalElapsed;
+    
+    progressBar.update(completedIterations, {
+      rate: finalRate.toFixed(1),
+      duration_formatted: formatTime(totalElapsed),
+      eta_formatted: timedOut ? 'TIMEOUT' : '0:00'
+    });
+    
+    progressBar.stop();
+
     if (timedOut) {
-      console.log(`    ⚠️  Timed out after ${completedIterations}/${iterations} iterations`);
+      console.log(`⚠️  ${displayName} timed out after ${completedIterations}/${iterations} iterations`);
     } else {
-      console.log(`    ✅ Completed all ${iterations} iterations`);
+      console.log(`✅ ${displayName} completed all ${iterations} iterations in ${formatTime(totalElapsed)}`);
     }
 
     const queryStats = this.calculateQueryStatistics(allIterationResults);

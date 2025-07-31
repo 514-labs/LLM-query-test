@@ -438,13 +438,8 @@ export class DataGenerator {
       await generateAndInsertSequentialWithMultiBar(databases, rowCount, batchSize, parallelWorkers);
       
     } catch (error) {
-      console.log(`⚠️  Multi-DB parallel insertion failed: ${error instanceof Error ? error.message : String(error)}`);
-      console.log(`🔄 Falling back to sequential insertion for each database...`);
-      
-      // Fall back to sequential insertion for each database
-      for (const { database, databaseType } of databases) {
-        await this.generateAndInsertInBatches(database, rowCount, databaseType, batchSize);
-      }
+      console.error(`Multi-database sequential insertion failed: ${error instanceof Error ? error.message : String(error)}`);
+      throw error;
     }
   }
 }

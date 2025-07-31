@@ -32,10 +32,7 @@ export class ResultsReporter {
       const tableData = this.createComparisonTable(sizeResults);
       this.printTable(tableData);
       
-      // Add statistical details for query-only tests
-      if (isQueryOnly) {
-        this.printQueryStatistics(sizeResults);
-      }
+      // Statistical details removed for cleaner output
       
       // Add performance insights
       this.printPerformanceInsights(sizeResults);
@@ -127,12 +124,18 @@ export class ResultsReporter {
       console.log(`   • PostgreSQL indexes provide ${indexBenefit.toFixed(1)}x speedup`);
     }
     
-    // Find fastest for each query
+    // Find fastest for each query type
+    const queryTypes = [
+      { name: 'Q1 (metadata)', type: 'metadata' },
+      { name: 'Q2 (sample)', type: 'metadata' }, 
+      { name: 'Q3 (analytical)', type: 'analytical' },
+      { name: 'Q4 (analytical)', type: 'analytical' }
+    ];
+    
     for (let i = 0; i < 4; i++) {
       const times = results.map(r => ({ db: r.configuration.database + (r.configuration.withIndex ? ' (indexed)' : ''), time: r.queryResults[i]?.duration || 0 }));
       const fastest = times.reduce((min, curr) => curr.time < min.time ? curr : min);
-      const queryName = ['Q1', 'Q2', 'Q3', 'Q4'][i];
-      console.log(`   • ${queryName} fastest: ${fastest.db} (${fastest.time.toFixed(1)}ms)`);
+      console.log(`   • ${queryTypes[i].name} fastest: ${fastest.db} (${fastest.time.toFixed(1)}ms)`);
     }
   }
 

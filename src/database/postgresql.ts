@@ -120,7 +120,10 @@ export class PostgreSQLDatabase {
         tisb TEXT[],
         messages INTEGER,
         seen DOUBLE PRECISION,
+        seen_pos DOUBLE PRECISION,
         rssi DOUBLE PRECISION,
+        alert INTEGER,
+        spi INTEGER,
         alt_baro_is_ground BOOLEAN,
         timestamp TIMESTAMP
       )
@@ -150,16 +153,23 @@ export class PostgreSQLDatabase {
 
     const client = await this.pool.connect();
     try {
-      // Build parameterized query for batch insert
       const columns = Object.keys(records[0]);
-      const placeholders = records.map((_, recordIndex) => 
-        `(${columns.map((_, colIndex) => `$${recordIndex * columns.length + colIndex + 1}`).join(', ')})`
-      ).join(', ');
+      const maxParamsPerQuery = 60000; // PostgreSQL limit is ~65,535
+      const maxRecordsPerQuery = Math.floor(maxParamsPerQuery / columns.length);
       
-      const values = records.flatMap(record => columns.map(col => record[col]));
-      
-      const query = `INSERT INTO performance_test (${columns.join(', ')}) VALUES ${placeholders}`;
-      await client.query(query, values);
+      // Split large batches to avoid PostgreSQL parameter limit
+      for (let i = 0; i < records.length; i += maxRecordsPerQuery) {
+        const chunk = records.slice(i, i + maxRecordsPerQuery);
+        
+        const placeholders = chunk.map((_, recordIndex) => 
+          `(${columns.map((_, colIndex) => `$${recordIndex * columns.length + colIndex + 1}`).join(', ')})`
+        ).join(', ');
+        
+        const values = chunk.flatMap(record => columns.map(col => record[col]));
+        
+        const query = `INSERT INTO performance_test (${columns.join(', ')}) VALUES ${placeholders}`;
+        await client.query(query, values);
+      }
     } finally {
       client.release();
     }

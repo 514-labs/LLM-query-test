@@ -33,7 +33,7 @@ export class CheckpointManager {
     const filePath = path.join(this.CHECKPOINT_DIR, this.CHECKPOINT_FILE);
     fs.writeFileSync(filePath, JSON.stringify(checkpoint, null, 2));
     
-    console.log(`💾 Checkpoint saved: ${checkpoint.completedConfigurations.length}/${checkpoint.totalConfigurations} configurations completed`);
+    // Checkpoint saved silently
   }
 
   static loadCheckpoint(): TestCheckpoint | null {

@@ -11,7 +11,11 @@
       "Bash(docker stop:*)",
       "Bash(docker rm:*)",
       "Bash(docker run:*)",
-      "Bash(docker inspect:*)"
+      "Bash(docker inspect:*)",
+      "Bash(DATASET_SIZE=1000 npm start)",
+      "Bash(PARALLEL_INSERT=false DATASET_SIZE=1000 npm start)",
+      "Bash(DATASET_SIZE=10000 npm start)",
+      "Bash(npm run:*)"
     ],
     "deny": []
   }
