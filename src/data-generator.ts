@@ -220,6 +220,9 @@ export class DataGenerator {
   async generateAndInsertInBatches(database: any, rowCount: number, databaseType: 'clickhouse' | 'postgresql', batchSize: number = 50000): Promise<void> {
     console.log(`Generating and inserting ${rowCount.toLocaleString()} aircraft records in batches of ${batchSize.toLocaleString()}...`);
     
+    const overallStartTime = Date.now();
+    const totalBatches = Math.ceil(rowCount / batchSize);
+    
     const startDate = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const endDate = new Date();
     const timeRange = endDate.getTime() - startDate.getTime();
@@ -229,6 +232,8 @@ export class DataGenerator {
     const aircraft = this.generateAircraft(aircraftCount);
     
     for (let i = 0; i < rowCount; i += batchSize) {
+      const batchStartTime = Date.now();
+      const currentBatch = Math.floor(i / batchSize) + 1;
       const currentBatchSize = Math.min(batchSize, rowCount - i);
       const batch: AircraftTrackingRecord[] = [];
       
@@ -311,14 +316,31 @@ export class DataGenerator {
       // Insert batch and clear from memory
       await database.insertBatch(batch);
       
+      const batchEndTime = Date.now();
+      const batchDuration = batchEndTime - batchStartTime;
+      const totalElapsed = batchEndTime - overallStartTime;
       const progress = Math.min(i + batchSize, rowCount);
-      console.log(`Inserted ${progress.toLocaleString()} / ${rowCount.toLocaleString()} records`);
+      
+      // Calculate ETA
+      const avgBatchTime = totalElapsed / currentBatch;
+      const remainingBatches = totalBatches - currentBatch;
+      const estimatedRemaining = remainingBatches * avgBatchTime;
+      
+      console.log(`Batch ${currentBatch}/${totalBatches}: ${progress.toLocaleString()}/${rowCount.toLocaleString()} records (${this.formatTime(batchDuration)}) | Elapsed: ${this.formatTime(totalElapsed)} | ETA: ${this.formatTime(estimatedRemaining)}`);
       
       // Clear batch to free memory
       batch.length = 0;
     }
     
-    console.log('Data insertion complete');
+    const totalTime = Date.now() - overallStartTime;
+    console.log(`Data insertion complete in ${this.formatTime(totalTime)}`);
+  }
+
+  private formatTime(ms: number): string {
+    if (ms < 1000) return `${ms}ms`;
+    if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
+    if (ms < 3600000) return `${Math.floor(ms / 60000)}m ${Math.floor((ms % 60000) / 1000)}s`;
+    return `${Math.floor(ms / 3600000)}h ${Math.floor((ms % 3600000) / 60000)}m`;
   }
 
   // Keep the old method for backward compatibility

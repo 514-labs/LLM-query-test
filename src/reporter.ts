@@ -43,6 +43,7 @@ export class ResultsReporter {
     const headers = [
       'Database',
       'Index',
+      'Rows',
       'Q1 (ms)',
       'Q2 (ms)',
       'Q3 (ms)',
@@ -55,10 +56,14 @@ export class ResultsReporter {
       const config = result.configuration;
       const dbName = config.database === 'clickhouse' ? 'ClickHouse' : 'PostgreSQL';
       const indexStatus = config.withIndex ? '✓' : '✗';
+      const rowCount = config.rowCount >= 1000000 
+        ? `${(config.rowCount / 1000000).toFixed(0)}M`
+        : `${(config.rowCount / 1000).toFixed(0)}K`;
       
       return [
         dbName,
         indexStatus,
+        rowCount,
         (result.queryResults[0]?.duration || 0).toFixed(1),
         (result.queryResults[1]?.duration || 0).toFixed(1),
         (result.queryResults[2]?.duration || 0).toFixed(1),
