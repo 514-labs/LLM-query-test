@@ -8,8 +8,17 @@ export interface QueryResult {
 export class TestQueries {
   static getQueries() {
     const currentTime = new Date();
-    const oneDayAgo = new Date(currentTime.getTime() - 24 * 60 * 60 * 1000);
-    const timeFilter = oneDayAgo.toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, '');
+    
+    // Today (start of day to now)
+    const todayStart = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate());
+    const todayStartStr = todayStart.toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, '');
+    
+    // Day before yesterday (full day)
+    const dayBeforeYesterday = new Date(currentTime.getTime() - 2 * 24 * 60 * 60 * 1000);
+    const dayBeforeYesterdayStart = new Date(dayBeforeYesterday.getFullYear(), dayBeforeYesterday.getMonth(), dayBeforeYesterday.getDate());
+    const dayBeforeYesterdayEnd = new Date(dayBeforeYesterdayStart.getTime() + 24 * 60 * 60 * 1000);
+    const dayBeforeYesterdayStartStr = dayBeforeYesterdayStart.toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, '');
+    const dayBeforeYesterdayEndStr = dayBeforeYesterdayEnd.toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, '');
     
     return {
       q1_show_tables: {
@@ -30,15 +39,15 @@ export class TestQueries {
           LIMIT 10
         `
       },
-      q3_hourly_aircraft_counts: {
-        name: 'Q3 Hourly aircraft counts',
+      q3_hourly_aircraft_today: {
+        name: 'Q3 Hourly aircraft count - today',
         clickhouse: `
           SELECT
             toStartOfHour(timestamp) AS hour_bucket,
             count(DISTINCT hex) AS unique_aircraft_count
           FROM performance_test
           WHERE
-            timestamp >= '${timeFilter}'
+            timestamp >= '${todayStartStr}'
             AND alt_baro_is_ground = false
           GROUP BY hour_bucket
           ORDER BY hour_bucket ASC
@@ -49,41 +58,37 @@ export class TestQueries {
             count(DISTINCT hex) AS unique_aircraft_count
           FROM performance_test
           WHERE
-            timestamp >= '${timeFilter}'::timestamp
+            timestamp >= '${todayStartStr}'::timestamp
             AND alt_baro_is_ground = false
           GROUP BY hour_bucket
           ORDER BY hour_bucket ASC
         `
       },
-      q4_average_hourly_aircraft: {
-        name: 'Q4 Average hourly aircraft calculation',
+      q4_hourly_aircraft_day_before_yesterday: {
+        name: 'Q4 Hourly aircraft count - day before yesterday',
         clickhouse: `
-          WITH HourlyAircraftCounts AS (
-            SELECT
-              toStartOfHour(timestamp) AS hour_bucket,
-              count(DISTINCT hex) AS unique_aircraft_count
-            FROM performance_test
-            WHERE
-              timestamp >= '${timeFilter}'
-              AND alt_baro_is_ground = false
-            GROUP BY hour_bucket
-          )
-          SELECT avg(unique_aircraft_count) AS average_hourly_aircraft
-          FROM HourlyAircraftCounts
+          SELECT
+            toStartOfHour(timestamp) AS hour_bucket,
+            count(DISTINCT hex) AS unique_aircraft_count
+          FROM performance_test
+          WHERE
+            timestamp >= '${dayBeforeYesterdayStartStr}'
+            AND timestamp < '${dayBeforeYesterdayEndStr}'
+            AND alt_baro_is_ground = false
+          GROUP BY hour_bucket
+          ORDER BY hour_bucket ASC
         `,
         postgresql: `
-          WITH HourlyAircraftCounts AS (
-            SELECT
-              date_trunc('hour', timestamp) AS hour_bucket,
-              count(DISTINCT hex) AS unique_aircraft_count
-            FROM performance_test
-            WHERE
-              timestamp >= '${timeFilter}'::timestamp
-              AND alt_baro_is_ground = false
-            GROUP BY hour_bucket
-          )
-          SELECT avg(unique_aircraft_count) AS average_hourly_aircraft
-          FROM HourlyAircraftCounts
+          SELECT
+            date_trunc('hour', timestamp) AS hour_bucket,
+            count(DISTINCT hex) AS unique_aircraft_count
+          FROM performance_test
+          WHERE
+            timestamp >= '${dayBeforeYesterdayStartStr}'::timestamp
+            AND timestamp < '${dayBeforeYesterdayEndStr}'::timestamp
+            AND alt_baro_is_ground = false
+          GROUP BY hour_bucket
+          ORDER BY hour_bucket ASC
         `
       }
     };

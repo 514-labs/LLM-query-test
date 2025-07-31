@@ -1,3 +1,6 @@
+import { MemoryMonitor } from './progress-reporter';
+import { generateAndInsertParallel, generateAndInsertParallelWithMultiBar, generateAndInsertSequentialWithMultiBar } from './parallel-inserter';
+
 export interface AircraftTrackingRecord {
   zorderCoordinate: number;
   approach: boolean;
@@ -220,10 +223,21 @@ export class DataGenerator {
   async generateAndInsertInBatches(database: any, rowCount: number, databaseType: 'clickhouse' | 'postgresql', batchSize: number = 50000): Promise<void> {
     console.log(`Generating and inserting ${rowCount.toLocaleString()} aircraft records in batches of ${batchSize.toLocaleString()}...`);
     
+    // Memory check before starting
+    const estimatedMemory = MemoryMonitor.estimateDatasetMemory(rowCount);
+    const memoryOk = await MemoryMonitor.checkBeforeOperation(`Data generation (${rowCount.toLocaleString()} rows)`, estimatedMemory);
+    
+    if (!memoryOk) {
+      throw new Error('Insufficient memory for requested dataset size. Reduce DATASET_SIZE or BATCH_SIZE in .env');
+    }
+    
+    // Start memory monitoring
+    MemoryMonitor.startMonitoring();
+    
     const overallStartTime = Date.now();
     const totalBatches = Math.ceil(rowCount / batchSize);
     
-    const startDate = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const startDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000); // 7 days ago
     const endDate = new Date();
     const timeRange = endDate.getTime() - startDate.getTime();
     
@@ -316,6 +330,15 @@ export class DataGenerator {
       // Insert batch and clear from memory
       await database.insertBatch(batch);
       
+      // Check memory usage every 5 batches
+      if (currentBatch % 5 === 0) {
+        const memoryOk = MemoryMonitor.checkMemoryUsage();
+        if (!memoryOk) {
+          MemoryMonitor.stopMonitoring();
+          throw new Error('Critical memory usage detected. Consider reducing dataset size or batch size.');
+        }
+      }
+      
       const batchEndTime = Date.now();
       const batchDuration = batchEndTime - batchStartTime;
       const totalElapsed = batchEndTime - overallStartTime;
@@ -334,6 +357,10 @@ export class DataGenerator {
     
     const totalTime = Date.now() - overallStartTime;
     console.log(`Data insertion complete in ${this.formatTime(totalTime)}`);
+    
+    // Stop memory monitoring and log final usage
+    MemoryMonitor.stopMonitoring();
+    MemoryMonitor.logCurrentUsage();
   }
 
   private formatTime(ms: number): string {
@@ -356,5 +383,68 @@ export class DataGenerator {
     }
     
     console.log('Data insertion complete');
+  }
+
+  // New parallel insertion method
+  async generateAndInsertInBatchesParallel(
+    database: any, 
+    rowCount: number, 
+    databaseType: 'clickhouse' | 'postgresql', 
+    batchSize: number = 50000,
+    parallelWorkers: number = 4
+  ): Promise<void> {
+    console.log(`🚀 PARALLEL MODE: Generating and inserting ${rowCount.toLocaleString()} records with ${parallelWorkers} workers`);
+    
+    // Memory check before starting (estimate for chunk size, not total dataset)
+    const chunkSize = Math.min(500000, Math.max(batchSize * parallelWorkers * 2, 100000));
+    const estimatedMemory = MemoryMonitor.estimateDatasetMemory(chunkSize);
+    const memoryOk = await MemoryMonitor.checkBeforeOperation(`Parallel data generation (${chunkSize.toLocaleString()} records per chunk)`, estimatedMemory);
+    
+    if (!memoryOk) {
+      throw new Error('Insufficient memory for requested dataset size. Reduce DATASET_SIZE or BATCH_SIZE in .env');
+    }
+    
+    try {
+      await generateAndInsertParallel(database, rowCount, databaseType, batchSize, parallelWorkers);
+    } catch (error) {
+      console.log(`⚠️  Parallel insertion failed: ${error instanceof Error ? error.message : String(error)}`);
+      console.log(`🔄 Falling back to sequential insertion...`);
+      
+      // Fall back to sequential insertion
+      await this.generateAndInsertInBatches(database, rowCount, databaseType, batchSize);
+    }
+  }
+
+  // New sequential insertion method for multiple database configurations
+  async generateAndInsertInBatchesSequentialMultiDB(
+    databases: { database: any; databaseType: 'clickhouse' | 'postgresql'; withIndex?: boolean }[],
+    rowCount: number,
+    batchSize: number = 50000,
+    parallelWorkers: number = 4
+  ): Promise<void> {
+    console.log(`🚀 MULTI-DB SEQUENTIAL MODE: Generating and inserting ${rowCount.toLocaleString()} records into ${databases.length} database configurations with ${parallelWorkers} workers each`);
+    
+    // Memory check before starting (estimate for chunk size, not total dataset)
+    const chunkSize = Math.min(500000, Math.max(batchSize * parallelWorkers * 2, 100000));
+    const estimatedMemory = MemoryMonitor.estimateDatasetMemory(chunkSize); // Check chunk size since we're streaming
+    const memoryOk = await MemoryMonitor.checkBeforeOperation(`Multi-DB sequential data generation (${chunkSize.toLocaleString()} records per chunk)`, estimatedMemory);
+    
+    if (!memoryOk) {
+      throw new Error('Insufficient memory for requested dataset size. Reduce DATASET_SIZE or BATCH_SIZE in .env');
+    }
+    
+    try {
+      // Run sequential insertion for all database configurations with comparative progress bars
+      await generateAndInsertSequentialWithMultiBar(databases, rowCount, batchSize, parallelWorkers);
+      
+    } catch (error) {
+      console.log(`⚠️  Multi-DB parallel insertion failed: ${error instanceof Error ? error.message : String(error)}`);
+      console.log(`🔄 Falling back to sequential insertion for each database...`);
+      
+      // Fall back to sequential insertion for each database
+      for (const { database, databaseType } of databases) {
+        await this.generateAndInsertInBatches(database, rowCount, databaseType, batchSize);
+      }
+    }
   }
 }

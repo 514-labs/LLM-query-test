@@ -1,5 +1,51 @@
+import dotenv from 'dotenv';
 import { PerformanceTester } from './performance-tester';
 import { ResultsReporter } from './reporter';
+
+dotenv.config();
+
+// Configuration (merged from config.ts)
+export const config = {
+  clickhouse: {
+    host: process.env.CLICKHOUSE_HOST || 'localhost',
+    port: parseInt(process.env.CLICKHOUSE_PORT || '8123'),
+    database: process.env.CLICKHOUSE_DATABASE || 'performance_test',
+    username: process.env.CLICKHOUSE_USERNAME || 'default',
+    password: process.env.CLICKHOUSE_PASSWORD || '',
+  },
+  postgres: {
+    host: process.env.POSTGRES_HOST || 'localhost',
+    port: parseInt(process.env.POSTGRES_PORT || '5432'),
+    database: process.env.POSTGRES_DATABASE || 'performance_test',
+    username: process.env.POSTGRES_USERNAME || 'postgres',
+    password: process.env.POSTGRES_PASSWORD || 'postgres',
+  },
+  test: {
+    datasetSize: parseInt(process.env.DATASET_SIZE || '10000000'),
+    batchSize: parseInt(process.env.BATCH_SIZE || '50000'),
+    parallelInsert: process.env.PARALLEL_INSERT === 'true',
+    parallelWorkers: parseInt(process.env.PARALLEL_WORKERS || '4'),
+    parallelDatabases: process.env.PARALLEL_DATABASES === 'true',
+  },
+};
+
+// Help command (merged from help.ts)
+function showHelp(): void {
+  console.log('📋 Available Commands:');
+  console.log();
+  console.log('npm start                    Run full performance test with data generation');
+  console.log('npm run query-test           Run 100-iteration statistical test (--iterations=N --time-limit=N)');
+  console.log('npm run graphs               Generate ASCII performance graphs from results (--update-readme)');
+  console.log('npm run start-dbs            Start ClickHouse and PostgreSQL Docker containers');
+  console.log('npm run clean                Clear databases and result files');
+  console.log('npm run clean:db             Clear database tables only');
+  console.log('npm run clean:output         Clear result files only');
+  console.log('npm run help                 Show this help');
+  console.log();
+  console.log('Workflow: npm run clean → npm start → npm run query-test → npm run graphs');
+  console.log();
+  console.log('🔄 Tests auto-resume from checkpoints if interrupted (Ctrl+C safe)');
+}
 
 interface CommandLineArgs {
   queryOnly: boolean;
@@ -9,6 +55,13 @@ interface CommandLineArgs {
 
 function parseArgs(): CommandLineArgs {
   const args = process.argv.slice(2);
+  
+  // Handle help flags
+  if (args.includes('--help') || args.includes('-h')) {
+    showHelp();
+    process.exit(0);
+  }
+  
   const queryOnly = args.includes('--query-only');
   const iterationsArg = args.find(arg => arg.startsWith('--iterations='));
   const timeLimitArg = args.find(arg => arg.startsWith('--time-limit='));
@@ -39,13 +92,9 @@ async function main() {
     
     ResultsReporter.printResults(results);
     
-    if (queryOnly) {
-      ResultsReporter.saveToFile(results, `query-test-${iterations}x-results.json`);
-      ResultsReporter.saveCSV(results, `query-test-${iterations}x-results.csv`);
-    } else {
-      ResultsReporter.saveToFile(results);
-      ResultsReporter.saveCSV(results);
-    }
+    // Save with timestamped filenames (will auto-generate if not specified)
+    ResultsReporter.saveToFile(results);
+    ResultsReporter.saveCSV(results);
     
   } catch (error) {
     console.error('Test execution failed:', error);

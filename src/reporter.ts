@@ -285,10 +285,16 @@ export class ResultsReporter {
     console.log(`Total test time: ${this.formatDuration(result.totalTime)}`);
   }
 
-  static saveToFile(results: TestResults[], filename: string = 'test-results.json'): void {
+  static saveToFile(results: TestResults[], filename?: string): void {
     const outputDir = path.join(process.cwd(), 'output');
     if (!fs.existsSync(outputDir)) {
       fs.mkdirSync(outputDir);
+    }
+
+    // Generate timestamped filename if not provided
+    if (!filename) {
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').replace('T', '_').slice(0, -5);
+      filename = `test-results_${timestamp}.json`;
     }
 
     const filepath = path.join(outputDir, filename);
@@ -335,13 +341,147 @@ export class ResultsReporter {
     return [headers.join(','), ...csvRows.map(row => row.join(','))].join('\n');
   }
 
-  static saveCSV(results: TestResults[], filename: string = 'test-results.csv'): void {
+  static generateQueryOnlyCSV(results: TestResults[]): string {
+    const headers = [
+      'Database',
+      'Rows',
+      'Index',
+      'Iterations',
+      'Completed_Iterations',
+      'Timed_Out',
+      'Q1_Mean_ms',
+      'Q1_Median_ms',
+      'Q1_StdDev_ms',
+      'Q1_Min_ms',
+      'Q1_Max_ms',
+      'Q2_Mean_ms',
+      'Q2_Median_ms',
+      'Q2_StdDev_ms',
+      'Q2_Min_ms',
+      'Q2_Max_ms',
+      'Q3_Mean_ms',
+      'Q3_Median_ms',
+      'Q3_StdDev_ms',
+      'Q3_Min_ms',
+      'Q3_Max_ms',
+      'Q4_Mean_ms',
+      'Q4_Median_ms',
+      'Q4_StdDev_ms',
+      'Q4_Min_ms',
+      'Q4_Max_ms',
+      'Total_Mean_ms',
+      'Total_Median_ms',
+      'Total_StdDev_ms',
+      'Total_Min_ms',
+      'Total_Max_ms',
+      'Setup_Time_ms'
+    ];
+
+    const csvRows = results.map(result => {
+      const config = result.configuration;
+      const stats = result.queryStats;
+      
+      if (!stats) {
+        // Fallback for non-query-only tests
+        return [
+          config.database,
+          config.rowCount,
+          config.withIndex ? 'yes' : 'no',
+          '1',
+          '1',
+          'false',
+          result.queryResults[0]?.duration.toFixed(2) || '0',
+          result.queryResults[0]?.duration.toFixed(2) || '0',
+          '0',
+          result.queryResults[0]?.duration.toFixed(2) || '0',
+          result.queryResults[0]?.duration.toFixed(2) || '0',
+          result.queryResults[1]?.duration.toFixed(2) || '0',
+          result.queryResults[1]?.duration.toFixed(2) || '0',
+          '0',
+          result.queryResults[1]?.duration.toFixed(2) || '0',
+          result.queryResults[1]?.duration.toFixed(2) || '0',
+          result.queryResults[2]?.duration.toFixed(2) || '0',
+          result.queryResults[2]?.duration.toFixed(2) || '0',
+          '0',
+          result.queryResults[2]?.duration.toFixed(2) || '0',
+          result.queryResults[2]?.duration.toFixed(2) || '0',
+          result.queryResults[3]?.duration.toFixed(2) || '0',
+          result.queryResults[3]?.duration.toFixed(2) || '0',
+          '0',
+          result.queryResults[3]?.duration.toFixed(2) || '0',
+          result.queryResults[3]?.duration.toFixed(2) || '0',
+          result.totalQueryTime.toFixed(2),
+          result.totalQueryTime.toFixed(2),
+          '0',
+          result.totalQueryTime.toFixed(2),
+          result.totalQueryTime.toFixed(2),
+          result.setupTime.toFixed(2)
+        ];
+      }
+      
+      // Calculate total query time statistics
+      const totalMean = stats.mean.reduce((sum, mean) => sum + mean, 0);
+      const totalMedian = stats.median.reduce((sum, median) => sum + median, 0);
+      const totalStdDev = Math.sqrt(stats.stdDev.reduce((sum, stdDev) => sum + stdDev * stdDev, 0));
+      const totalMin = stats.min.reduce((sum, min) => sum + min, 0);
+      const totalMax = stats.max.reduce((sum, max) => sum + max, 0);
+      
+      return [
+        config.database,
+        config.rowCount,
+        config.withIndex ? 'yes' : 'no',
+        result.iterations?.toString() || '1',
+        result.completedIterations?.toString() || '1',
+        result.timedOut ? 'true' : 'false',
+        stats.mean[0].toFixed(2),
+        stats.median[0].toFixed(2),
+        stats.stdDev[0].toFixed(2),
+        stats.min[0].toFixed(2),
+        stats.max[0].toFixed(2),
+        stats.mean[1].toFixed(2),
+        stats.median[1].toFixed(2),
+        stats.stdDev[1].toFixed(2),
+        stats.min[1].toFixed(2),
+        stats.max[1].toFixed(2),
+        stats.mean[2].toFixed(2),
+        stats.median[2].toFixed(2),
+        stats.stdDev[2].toFixed(2),
+        stats.min[2].toFixed(2),
+        stats.max[2].toFixed(2),
+        stats.mean[3].toFixed(2),
+        stats.median[3].toFixed(2),
+        stats.stdDev[3].toFixed(2),
+        stats.min[3].toFixed(2),
+        stats.max[3].toFixed(2),
+        totalMean.toFixed(2),
+        totalMedian.toFixed(2),
+        totalStdDev.toFixed(2),
+        totalMin.toFixed(2),
+        totalMax.toFixed(2),
+        result.setupTime.toFixed(2)
+      ];
+    });
+
+    return [headers.join(','), ...csvRows.map(row => row.join(','))].join('\n');
+  }
+
+  static saveCSV(results: TestResults[], filename?: string): void {
     const outputDir = path.join(process.cwd(), 'output');
     if (!fs.existsSync(outputDir)) {
       fs.mkdirSync(outputDir);
     }
 
-    const csv = this.generateCSV(results);
+    // Generate timestamped filename if not provided
+    if (!filename) {
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').replace('T', '_').slice(0, -5);
+      const isQueryOnly = results.some(r => r.iterations && r.iterations > 1);
+      const prefix = isQueryOnly ? 'query-test' : 'test-results';
+      filename = `${prefix}_${timestamp}.csv`;
+    }
+
+    // Check if this is a query-only test
+    const isQueryOnly = results.some(r => r.iterations && r.iterations > 1);
+    const csv = isQueryOnly ? this.generateQueryOnlyCSV(results) : this.generateCSV(results);
     const filepath = path.join(outputDir, filename);
     fs.writeFileSync(filepath, csv);
     console.log(`CSV results saved to: ${filepath}`);

@@ -7,78 +7,38 @@ Tests LLM-style query patterns against transactional (PostgreSQL) and OLAP (Clic
 ### Test Environment
 - **Machine**: Apple M3 Pro, 18GB RAM
 - **Docker**: ClickHouse server, PostgreSQL 15
-- **Dataset**: 1M and 10M aircraft tracking records (46 columns each)
+- **Dataset**: 10M aircraft tracking records (46 columns each)
 
 ### Results
 
-#### First Run - Single Iteration
-
-**10M Row Dataset Performance:**
-
-| Database   | Index | Q1 (ms) | Q2 (ms) | Q3 (ms)   | Q4 (ms)   | Total (ms) | Setup (s) |
-|------------|-------|---------|---------|-----------|-----------|------------|-----------|
-| ClickHouse | ✗     | 8.1     | 17.2    | 66.7      | 63.5      | 155.5      | 140.4     |
-| PostgreSQL | ✓     | 3.7     | 5.1     | 19,262.6  | 15,878.1  | 35,149.5   | 1,187.8   |
-| PostgreSQL | ✗     | 2.3     | 2.1     | 16,154.2  | 15,916.0  | 32,074.5   | 529.7     |
-
-**Key Findings:**
-- **ClickHouse is 226x faster** than PostgreSQL for analytical queries (Q3, Q4)
-- **PostgreSQL excels** at simple queries (Q1, Q2) with 2-8ms response times
-- **PostgreSQL indexes** provide minimal benefit (0.9x improvement) for this workload
-- **Query pattern matters**: Discovery queries favor PostgreSQL, aggregation queries favor ClickHouse
-
-#### Statistical Analysis - Query-Only 100 Iterations
-
-**Query Performance Comparison (median times, 100 iterations each):**
-
-```
-Q1 (Discovery - SHOW TABLES):
-ClickHouse  |██                                          |  2.2ms
-PostgreSQL  |██                                          |  2.9ms
-
-Q2 (Exploration - SELECT * LIMIT 10):
-ClickHouse  |███                                         |  6.6ms
-PostgreSQL  |█                                           |  1.3ms
-
-Q3 (Analysis - Hourly Aircraft Counts):
-ClickHouse  |███                                         | 33.5ms
-PostgreSQL  |████████████████████████████████████████████| 10534ms
-
-Q4 (Calculation - Average via CTE):
-ClickHouse  |███                                         | 33.1ms  
-PostgreSQL  |████████████████████████████████████████████| 10476ms
-
-Total Query Time (10M rows):
-ClickHouse  |█                                           |    75ms
-PostgreSQL  |████████████████████████████████████████████| 21014ms
-
-Performance Ratio: PostgreSQL is 280x slower for analytical queries
-```
-
-**Key Statistical Insights:**
-- **ClickHouse**: Consistent ~75ms total (σ=3ms), no scaling penalty for 10x data
-- **PostgreSQL**: ~21s total (σ=500ms), indexes provide minimal benefit (0.2% improvement)
-- **Query patterns**: Discovery/exploration favor PostgreSQL, analytics heavily favor ClickHouse
-- **Reliability**: Both databases show stable, predictable performance across 100 iterations
+[Benchmark results will be added here]
 
 ## Setup
 
 ### Prerequisites
 
-**ClickHouse Server**
+**Quick Start - Docker Containers**
 ```bash
-# Docker
-docker run -d --name clickhouse-server --ulimit nofile=262144:262144 -p 8123:8123 -p 9000:9000 clickhouse/clickhouse-server
+# Start both databases with equal resource allocation for fair testing
+npm run start-dbs
+```
+
+**Manual Setup**
+
+*ClickHouse Server*
+```bash
+# Docker (with equal resource allocation for fair testing)
+docker run -d --name clickhouse-server --memory=4g --cpus=2 --ulimit nofile=262144:262144 -p 8123:8123 -p 9000:9000 -e CLICKHOUSE_PASSWORD=password clickhouse/clickhouse-server
 
 # Or install locally
 curl https://clickhouse.com/ | sh
 ./clickhouse server
 ```
 
-**PostgreSQL Server**
+*PostgreSQL Server*
 ```bash
-# Docker
-docker run -d --name postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgres:15
+# Docker (with equal resource allocation for fair testing)
+docker run -d --name postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 --memory=4g --cpus=2 postgres:15
 
 # Or install locally
 brew install postgresql && brew services start postgresql
@@ -101,26 +61,94 @@ npm run query-test                                 # Query-only test (100 iterat
 npm run query-test -- --time-limit=120            # Query-only test (2hr time limit)
 npm run query-test -- --iterations=50             # Query-only test (50 iterations)
 npm run query-test -- --iterations=200 --time-limit=30  # 200 iterations with 30min time limit
+npm run graphs                                     # Generate ASCII performance graphs from output files
+npm run graphs -- --update-readme                 # Generate graphs AND update README results section
+npm run clean                                      # Clear databases and result files (fresh start)
+npm run clean:db                                   # Clear database tables only
+npm run clean:output                               # Clear result files only
+npm run help                                       # Show detailed command reference
+```
+
+**Help Options:**
+```bash
+npm start --help                                   # Show help for main test command
+npm run query-test -- --help                      # Show help for query-only tests
 ```
 
 ## Configuration
 
 Edit `.env` file to configure:
 - Database connections (host, port, password)
-- Dataset sizes (small/large test datasets)
+- Dataset size for testing (`DATASET_SIZE`)
 - Batch size for data insertion
+- **Parallel insertion**: Set `PARALLEL_INSERT=true` for 2-4x faster data loading
+- Worker count: `PARALLEL_WORKERS=4` (adjust based on CPU cores)
 
-### Time Limits
+### Advanced Features
 
-Query-only tests include automatic timeout protection:
+**⏱️ Time Limits**: Query-only tests include automatic timeout protection:
 - Default: 60 minutes per test configuration
 - Each database/index combination gets its own time limit
 - Partial results are saved if tests timeout
 - Use `--time-limit=X` to customize (X = minutes)
 
+**🔄 Auto-Resume**: Tests automatically resume from checkpoints if interrupted:
+- Safe to use Ctrl+C to interrupt long-running tests
+- Progress is saved after each configuration completes
+- Automatically resumes from last checkpoint on restart
+- Use `npm run clean:output` to clear checkpoints and start fresh
+
+**💾 Memory Monitoring**: Built-in memory usage protection:
+- Pre-test memory checks before large operations
+- Real-time monitoring during data generation
+- Automatic warnings at 85% memory usage
+- Critical alerts at 95% memory usage with suggestions
+
 ## Output
 
 Results in console, `output/test-results.json`, and `output/test-results.csv`.
+
+### ASCII Performance Graphs
+
+Generate visual performance comparisons from saved results:
+
+```bash
+npm run graphs                    # Terminal display only
+npm run graphs -- --update-readme # Update README + terminal display
+```
+
+**Prerequisites**: Run tests first to generate result files:
+```bash
+npm start          # Generate load test results
+npm run query-test # Generate query-only test results
+npm run graphs     # Then visualize both test results
+```
+
+Features:
+- Reads all JSON result files from `output/` directory
+- Automatically detects load tests vs query-only tests
+- Shows horizontal bar charts for query performance
+- Highlights timeout warnings for incomplete tests (⚠️)
+- Displays both mean and median statistics for multi-iteration tests
+- Includes setup time visualization
+- Groups results by dataset size for easy comparison
+- **`--update-readme`**: Injects benchmark summaries into README.md (preserves Test Environment section)
+
+### Cleanup Commands
+
+Reset your testing environment:
+
+```bash
+npm run clean        # Complete cleanup (databases + result files)
+npm run clean:db     # Clear database tables only (keep results)
+npm run clean:output # Clear result files only (keep data)
+```
+
+Use cleanup commands to:
+- Start fresh testing with clean databases
+- Remove old result files before new test runs
+- Free up disk space from large datasets
+- Reset after configuration changes
 
 ## Test Data & Queries
 
@@ -138,6 +166,6 @@ Results in console, `output/test-results.json`, and `output/test-results.csv`.
 2. **ClickHouse authentication** - Ensure CLICKHOUSE_PASSWORD is set correctly
 3. **Data type errors** - ClickHouse requires exact data types (use provided schema)
 4. **Memory issues** - Streaming generation handles large datasets, but ensure 4GB+ RAM
-5. **Long insertion times** - 10M+ rows take significant time, monitor progress with ETA
+5. **Long insertion times** - Large datasets take significant time, monitor progress with ETA
 6. **Permission errors** - Ensure database users have CREATE/DROP/INSERT permissions
 

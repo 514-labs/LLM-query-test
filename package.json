@@ -4,21 +4,29 @@
   "description": "Performance testing application for ClickHouse vs PostgreSQL",
   "main": "dist/index.js",
   "scripts": {
+    "start-dbs": "docker rm -f clickhouse-server postgres 2>/dev/null || true && docker run -d --name clickhouse-server --memory=4g --cpus=2 --ulimit nofile=262144:262144 -p 8123:8123 -p 9000:9000 -e CLICKHOUSE_PASSWORD=password clickhouse/clickhouse-server && docker run -d --name postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 --memory=4g --cpus=2 postgres:15",
     "build": "tsc",
     "start": "node dist/index.js",
     "dev": "ts-node src/index.ts",
     "test": "npm run build && npm start",
-    "query-test": "npm run build && node dist/index.js --query-only"
+    "query-test": "npm run build && node dist/index.js --query-only",
+    "graphs": "npm run build && node dist/generate-graphs.js",
+    "clean": "npm run build && node dist/cleanup.js",
+    "clean:db": "npm run build && node dist/cleanup.js --db-only",
+    "clean:output": "npm run build && node dist/cleanup.js --output-only",
+    "help": "ts-node src/help.ts"
   },
   "dependencies": {
     "@clickhouse/client": "^0.2.5",
-    "pg": "^8.11.3",
-    "dotenv": "^16.3.1"
+    "@types/cli-progress": "^3.11.6",
+    "cli-progress": "^3.12.0",
+    "dotenv": "^16.3.1",
+    "pg": "^8.11.3"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
     "@types/pg": "^8.10.9",
-    "typescript": "^5.3.2",
-    "ts-node": "^10.9.1"
+    "ts-node": "^10.9.1",
+    "typescript": "^5.3.2"
   }
 }

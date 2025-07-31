@@ -1,5 +1,8 @@
 import { createClient, ClickHouseClient } from '@clickhouse/client';
-import { config } from '../config';
+import { config } from '../index';
+
+// Global flag to prevent multiple database creation attempts
+let globalDatabaseCreated = false;
 
 export class ClickHouseDatabase {
   private client: ClickHouseClient;
@@ -15,7 +18,27 @@ export class ClickHouseDatabase {
 
   async connect(): Promise<void> {
     await this.client.ping();
-    console.log('ClickHouse connected successfully');
+    // Connection successful (suppress worker thread connection logs)
+  }
+
+  async ensureDatabaseExists(): Promise<void> {
+    try {
+      // Create a client without specifying database for initial setup
+      const setupClient = createClient({
+        host: `http://${config.clickhouse.host}:${config.clickhouse.port}`,
+        username: config.clickhouse.username,
+        password: config.clickhouse.password,
+      });
+      
+      await setupClient.command({
+        query: `CREATE DATABASE IF NOT EXISTS ${config.clickhouse.database}`
+      });
+      
+      console.log(`Created ClickHouse database: ${config.clickhouse.database}`);
+      await setupClient.close();
+    } catch (error) {
+      console.log(`ClickHouse database creation failed: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 
   async disconnect(): Promise<void> {
