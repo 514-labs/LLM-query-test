@@ -20,7 +20,10 @@
       "Bash(ls:*)",
       "Bash(docker exec:*)",
       "Bash(DATASET_SIZE=50000 PARALLEL_INSERT=false npm start)",
-      "Bash(DATASET_SIZE=50000 PARALLEL_INSERT=true npm start)"
+      "Bash(DATASET_SIZE=50000 PARALLEL_INSERT=true npm start)",
+      "mcp__github__get_me",
+      "mcp__github__list_issues",
+      "Bash(node:*)"
     ],
     "deny": []
   }
