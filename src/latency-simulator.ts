@@ -202,6 +202,9 @@ class LatencySimulator {
   async run(): Promise<void> {
     console.log('Database Latency Simulator');
     console.log('=========================\n');
+    console.log('⚠️  IMPORTANT: This simulator uses pre-recorded performance data from bulk tests.');
+    console.log('   No actual database queries are executed during this simulation.');
+    console.log('   All delays are based on statistical analysis from real query test results.\n');
     console.log('This simulator demonstrates the real-world impact of database performance');
     console.log('by simulating a chat conversation with realistic query delays.\n');
 
@@ -253,7 +256,8 @@ class LatencySimulator {
 
       // Start simulation
       console.log(`\nStarting chat simulation with ${selectedDb.name} on ${selectedSize} dataset`);
-      console.log(`Expected delay per question: ${totalLatency.toFixed(1)}ms\n`);
+      console.log(`Expected delay per question: ${totalLatency.toFixed(1)}ms`);
+      console.log('💡 Reminder: This uses pre-recorded performance statistics, not live database queries\n');
       console.log('=' .repeat(60));
       
       for (const [index, message] of this.chatMessages.entries()) {

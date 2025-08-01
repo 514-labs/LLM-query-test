@@ -49,7 +49,7 @@ function showHelp(): void {
   console.log('npm run query-test           Run 100-iteration statistical test (--iterations=N --time-limit=N)');
   console.log('npm run bulk-test            Run comprehensive bulk testing across multiple dataset sizes');
   console.log('npm run graphs               Generate ASCII performance graphs from results (--update-readme)');
-  console.log('npm run latency-sim          Interactive latency simulator showing real-world impact');
+  console.log('npm run latency-sim          Interactive latency simulator using pre-recorded test data');
   console.log('npm run start-dbs            Start all database containers (ClickHouse + 2x PostgreSQL)');
   console.log('npm run clean                Clear databases and result files');
   console.log('npm run clean:db             Clear database tables only');
