@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { ClickHouseDatabase } from './database/clickhouse';
 import { PostgreSQLDatabase } from './database/postgresql';
+import { config } from './index';
 
 export class DatabaseCleaner {
   private static readonly OUTPUT_DIR = path.join(process.cwd(), 'output');
@@ -52,12 +53,14 @@ export class DatabaseCleaner {
   private static async clearDatabases(): Promise<void> {
     const clickhouse = new ClickHouseDatabase();
     const postgresql = new PostgreSQLDatabase();
+    const postgresqlIndexed = new PostgreSQLDatabase(config.postgresIndexed);
 
     try {
       // Connect to databases
       console.log('   🔌 Connecting to databases...');
       await clickhouse.connect();
       await postgresql.connect();
+      await postgresqlIndexed.connect();
 
       // Drop tables
       console.log('   🗑️  Dropping ClickHouse table...');
@@ -65,16 +68,21 @@ export class DatabaseCleaner {
       
       console.log('   🗑️  Dropping PostgreSQL table...');
       await postgresql.dropTable();
+      
+      console.log('   🗑️  Dropping PostgreSQL (indexed) table...');
+      await postgresqlIndexed.dropTable();
 
       // Disconnect
       await clickhouse.disconnect();
       await postgresql.disconnect();
+      await postgresqlIndexed.disconnect();
       
     } catch (error) {
       // Ensure connections are closed even on error
       try {
         await clickhouse.disconnect();
         await postgresql.disconnect();
+        await postgresqlIndexed.disconnect();
       } catch (disconnectError) {
         // Ignore disconnect errors if already disconnected
       }

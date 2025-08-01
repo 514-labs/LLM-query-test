@@ -3,14 +3,16 @@ import { config } from '../index';
 
 export class PostgreSQLDatabase {
   private pool: Pool;
+  private dbConfig: any;
 
-  constructor() {
+  constructor(configOverride?: any) {
+    this.dbConfig = configOverride || config.postgres;
     this.pool = new Pool({
-      host: config.postgres.host,
-      port: config.postgres.port,
-      database: config.postgres.database,
-      user: config.postgres.username,
-      password: config.postgres.password,
+      host: this.dbConfig.host,
+      port: this.dbConfig.port,
+      database: this.dbConfig.database,
+      user: this.dbConfig.username,
+      password: this.dbConfig.password,
       max: 20,
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 2000,
@@ -26,11 +28,11 @@ export class PostgreSQLDatabase {
 
   async ensureDatabaseExists(): Promise<void> {
     const defaultClient = new Client({
-      host: config.postgres.host,
-      port: config.postgres.port,
+      host: this.dbConfig.host,
+      port: this.dbConfig.port,
       database: 'postgres',
-      user: config.postgres.username,
-      password: config.postgres.password,
+      user: this.dbConfig.username,
+      password: this.dbConfig.password,
     });
 
     try {
@@ -39,13 +41,13 @@ export class PostgreSQLDatabase {
       // Check if database exists
       const result = await defaultClient.query(
         'SELECT 1 FROM pg_database WHERE datname = $1',
-        [config.postgres.database]
+        [this.dbConfig.database]
       );
       
       if (result.rows.length === 0) {
         // Database doesn't exist, create it
-        await defaultClient.query(`CREATE DATABASE ${config.postgres.database}`);
-        console.log(`Created PostgreSQL database: ${config.postgres.database}`);
+        await defaultClient.query(`CREATE DATABASE ${this.dbConfig.database}`);
+        console.log(`Created PostgreSQL database: ${this.dbConfig.database}`);
       }
     } catch (error) {
       console.log(`PostgreSQL database creation failed: ${error instanceof Error ? error.message : String(error)}`);
@@ -133,12 +135,18 @@ export class PostgreSQLDatabase {
   async createTableWithIndex(): Promise<void> {
     await this.createTable();
     
-    // Add performance indexes
+    // Add performance indexes optimized for the analytical queries
     try {
-      await this.query('CREATE INDEX IF NOT EXISTS idx_performance_test_timestamp ON performance_test(timestamp)');
+      // Primary analytical query index (timestamp + boolean filter)
+      await this.query('CREATE INDEX IF NOT EXISTS idx_performance_test_timestamp_ground ON performance_test(timestamp, alt_baro_is_ground)');
+      // Alternative index order for different query patterns
+      await this.query('CREATE INDEX IF NOT EXISTS idx_performance_test_ground_timestamp ON performance_test(alt_baro_is_ground, timestamp)');
+      // Index for hex-based queries (DISTINCT hex)
       await this.query('CREATE INDEX IF NOT EXISTS idx_performance_test_hex ON performance_test(hex)');
-      await this.query('CREATE INDEX IF NOT EXISTS idx_performance_test_flight ON performance_test(flight)');
-      await this.query('CREATE INDEX IF NOT EXISTS idx_performance_test_lat_lon ON performance_test(lat, lon)');
+      // Composite index for hex + timestamp (for DISTINCT hex in time ranges)
+      await this.query('CREATE INDEX IF NOT EXISTS idx_performance_test_hex_timestamp ON performance_test(hex, timestamp)');
+      // Basic timestamp index as fallback
+      await this.query('CREATE INDEX IF NOT EXISTS idx_performance_test_timestamp ON performance_test(timestamp)');
     } catch (error) {
       console.log(`Index creation warning: ${error instanceof Error ? error.message : String(error)}`);
     }

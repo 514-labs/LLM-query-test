@@ -20,6 +20,13 @@ export const config = {
     username: process.env.POSTGRES_USERNAME || 'postgres',
     password: process.env.POSTGRES_PASSWORD || 'postgres',
   },
+  postgresIndexed: {
+    host: process.env.POSTGRES_INDEXED_HOST || 'localhost',
+    port: parseInt(process.env.POSTGRES_INDEXED_PORT || '5433'),
+    database: process.env.POSTGRES_INDEXED_DATABASE || 'performance_test',
+    username: process.env.POSTGRES_INDEXED_USERNAME || 'postgres',
+    password: process.env.POSTGRES_INDEXED_PASSWORD || 'postgres',
+  },
   test: {
     datasetSize: parseInt(process.env.DATASET_SIZE || '10000000'),
     batchSize: parseInt(process.env.BATCH_SIZE || '50000'),
@@ -34,12 +41,19 @@ function showHelp(): void {
   console.log();
   console.log('npm start                    Run full performance test with data generation');
   console.log('npm run query-test           Run 100-iteration statistical test (--iterations=N --time-limit=N)');
+  console.log('npm run bulk-test            Run comprehensive bulk testing across multiple dataset sizes');
   console.log('npm run graphs               Generate ASCII performance graphs from results (--update-readme)');
-  console.log('npm run start-dbs            Start ClickHouse and PostgreSQL Docker containers');
+  console.log('npm run start-dbs            Start all database containers (ClickHouse + 2x PostgreSQL)');
   console.log('npm run clean                Clear databases and result files');
   console.log('npm run clean:db             Clear database tables only');
   console.log('npm run clean:output         Clear result files only');
+  console.log('npm run kill-dbs             Remove all database containers');
   console.log('npm run help                 Show this help');
+  console.log();
+  console.log('Database Setup:');
+  console.log('  • ClickHouse on port 8123');
+  console.log('  • PostgreSQL (no indexes) on port 5432');
+  console.log('  • PostgreSQL (with indexes) on port 5433');
   console.log();
   console.log('Workflow: npm run clean → npm start → npm run query-test → npm run graphs');
   console.log();

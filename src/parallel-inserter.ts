@@ -8,6 +8,7 @@ export interface InsertJob {
   records: AircraftTrackingRecord[];
   database: 'clickhouse' | 'postgresql';
   jobId: number;
+  dbConfig?: any; // Configuration for PostgreSQL instances
 }
 
 export interface InsertResult {
@@ -82,7 +83,8 @@ export class ParallelInserter {
     records: AircraftTrackingRecord[], 
     database: 'clickhouse' | 'postgresql',
     batchSize: number = 50000,
-    suppressOutput: boolean = false
+    suppressOutput: boolean = false,
+    dbConfig?: any
   ): Promise<void> {
     const startTime = Date.now();
     const totalRecords = records.length;
@@ -108,7 +110,7 @@ export class ParallelInserter {
         const batch = batches[currentIndex];
         
         try {
-          const result = await this.processBatch(batch, database, currentIndex);
+          const result = await this.processBatch(batch, database, currentIndex, dbConfig);
           
           if (!result.success) {
             throw new Error(`Batch ${currentIndex} failed: ${result.error}`);
@@ -156,7 +158,8 @@ export class ParallelInserter {
   private async processBatch(
     records: AircraftTrackingRecord[], 
     database: 'clickhouse' | 'postgresql',
-    jobId: number
+    jobId: number,
+    dbConfig?: any
   ): Promise<InsertResult> {
     // Wait for an available worker
     const worker = await this.getAvailableWorker();
@@ -194,7 +197,7 @@ export class ParallelInserter {
       worker.on('error', errorHandler);
 
       // Send job to worker
-      worker.postMessage({ records, database, jobId });
+      worker.postMessage({ records, database, jobId, dbConfig });
     });
   }
 
@@ -462,11 +465,7 @@ export async function generateAndInsertSequentialWithMultiBar(
       
       await database.connect();
       
-      if (databaseType === 'postgresql' && withIndex) {
-        console.log(`Setting up PostgreSQL table with index...`);
-        await database.dropTable();
-        await database.createTableWithIndex();
-      }
+      // Tables are already set up by the performance tester
     }
     console.log('Database setup complete');
 
@@ -474,8 +473,11 @@ export async function generateAndInsertSequentialWithMultiBar(
 
     // Insert into each database sequentially with individual progress bars
     for (let dbIndex = 0; dbIndex < databases.length && !shutdownRequested; dbIndex++) {
-      const { database, databaseType } = databases[dbIndex];
+      const { database, databaseType, withIndex } = databases[dbIndex];
       const inserter = new ParallelInserter(workerCount);
+      
+      // Extract database configuration for worker threads
+      const dbConfig = databaseType === 'postgresql' && (database as any).dbConfig ? (database as any).dbConfig : undefined;
       
       // Create individual progress bar for this database
       const progressBar = new cliProgress.SingleBar({
@@ -506,7 +508,7 @@ export async function generateAndInsertSequentialWithMultiBar(
         const currentChunkSize = Math.min(chunkSize, rowCount - (chunkIndex * chunkSize));
         
         const chunkRecords = generateRecordsForChunk(currentChunkSize, startDate, timeRange, aircraft, generator);
-        await inserter.insertBatchParallel(chunkRecords, databaseType, batchSize, true);
+        await inserter.insertBatchParallel(chunkRecords, databaseType, batchSize, true, dbConfig);
         
         processedRecords += currentChunkSize;
         const elapsed = Date.now() - startTime;

@@ -16,7 +16,9 @@
       "Bash(PARALLEL_INSERT=false DATASET_SIZE=1000 npm start)",
       "Bash(DATASET_SIZE=10000 npm start)",
       "Bash(npm run:*)",
-      "Bash(DATASET_SIZE=100000 npm start)"
+      "Bash(DATASET_SIZE=100000 npm start)",
+      "Bash(ls:*)",
+      "Bash(docker exec:*)"
     ],
     "deny": []
   }

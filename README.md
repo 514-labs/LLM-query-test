@@ -6,7 +6,11 @@ Tests LLM-style query patterns against transactional (PostgreSQL) and OLAP (Clic
 
 ### Test Environment
 - **Machine**: Apple M3 Pro, 18GB RAM
-- **Docker**: ClickHouse server, PostgreSQL 15
+- **Docker Containers**: 
+  - ClickHouse server (port 8123)
+  - PostgreSQL 15 without indexes (port 5432)
+  - PostgreSQL 15 with indexes (port 5433)
+- **Resource Allocation**: Each container limited to 4GB RAM and 2 CPUs for fair comparison
 - **Dataset**: 10M aircraft tracking records (46 columns each)
 
 ### Results
@@ -19,8 +23,13 @@ Tests LLM-style query patterns against transactional (PostgreSQL) and OLAP (Clic
 
 **Quick Start - Docker Containers**
 ```bash
-# Start both databases with equal resource allocation for fair testing
+# Start all databases with equal resource allocation for fair testing
 npm run start-dbs
+
+# This creates:
+# - ClickHouse on port 8123
+# - PostgreSQL (no indexes) on port 5432
+# - PostgreSQL (with indexes) on port 5433
 ```
 
 **Manual Setup**
@@ -35,13 +44,17 @@ curl https://clickhouse.com/ | sh
 ./clickhouse server
 ```
 
-*PostgreSQL Server*
+*PostgreSQL Servers (Two Instances)*
 ```bash
-# Docker (with equal resource allocation for fair testing)
+# PostgreSQL without indexes (port 5432)
 docker run -d --name postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 --memory=4g --cpus=2 postgres:15
 
-# Or install locally
+# PostgreSQL with indexes (port 5433)
+docker run -d --name postgres-indexed -e POSTGRES_PASSWORD=postgres -p 5433:5432 --memory=4g --cpus=2 postgres:15
+
+# Or install locally and run two instances
 brew install postgresql && brew services start postgresql
+# Configure second instance on port 5433
 ```
 
 ### Installation
@@ -61,11 +74,13 @@ npm run query-test                                 # Query-only test (100 iterat
 npm run query-test -- --time-limit=120            # Query-only test (2hr time limit)
 npm run query-test -- --iterations=50             # Query-only test (50 iterations)
 npm run query-test -- --iterations=200 --time-limit=30  # 200 iterations with 30min time limit
+npm run bulk-test                                  # Run comprehensive bulk testing across multiple dataset sizes
 npm run graphs                                     # Generate ASCII performance graphs from output files
 npm run graphs -- --update-readme                 # Generate graphs AND update README results section
 npm run clean                                      # Clear databases and result files (fresh start)
 npm run clean:db                                   # Clear database tables only
 npm run clean:output                               # Clear result files only
+npm run kill-dbs                                   # Remove all database containers
 npm run help                                       # Show detailed command reference
 ```
 

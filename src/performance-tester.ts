@@ -2,7 +2,7 @@ import { ClickHouseDatabase } from './database/clickhouse';
 import { PostgreSQLDatabase } from './database/postgresql';
 import { DataGenerator, AircraftTrackingRecord } from './data-generator';
 import { TestQueries, QueryResult } from './queries';
-import { config as appConfig } from './index';
+import { config as appConfig, config } from './index';
 import { CheckpointManager, TestCheckpoint } from './checkpoint-manager';
 
 export interface TestConfiguration {
@@ -32,11 +32,13 @@ export interface TestResults {
 export class PerformanceTester {
   private clickhouse: ClickHouseDatabase;
   private postgresql: PostgreSQLDatabase;
+  private postgresqlIndexed: PostgreSQLDatabase;
   private dataGenerator: DataGenerator;
 
   constructor() {
     this.clickhouse = new ClickHouseDatabase();
     this.postgresql = new PostgreSQLDatabase();
+    this.postgresqlIndexed = new PostgreSQLDatabase(config.postgresIndexed);
     this.dataGenerator = new DataGenerator();
   }
 
@@ -46,9 +48,11 @@ export class PerformanceTester {
     // Ensure databases exist before connecting
     await this.clickhouse.ensureDatabaseExists();
     await this.postgresql.ensureDatabaseExists();
+    await this.postgresqlIndexed.ensureDatabaseExists();
     
     await this.clickhouse.connect();
     await this.postgresql.connect();
+    await this.postgresqlIndexed.connect();
     console.log('Database connections established');
   }
 
@@ -56,6 +60,7 @@ export class PerformanceTester {
     console.log('Cleaning up database connections...');
     await this.clickhouse.disconnect();
     await this.postgresql.disconnect();
+    await this.postgresqlIndexed.disconnect();
     console.log('Database connections closed');
   }
 
@@ -87,7 +92,8 @@ export class PerformanceTester {
   }
 
   private async setupTest(config: TestConfiguration): Promise<void> {
-    const database = config.database === 'clickhouse' ? this.clickhouse : this.postgresql;
+    const database = config.database === 'clickhouse' ? this.clickhouse : 
+                    (config.withIndex ? this.postgresqlIndexed : this.postgresql);
     
     console.log('Dropping existing table...');
     await database.dropTable();
@@ -172,8 +178,10 @@ export class PerformanceTester {
         }
         
         if (pgWithIndex) {
-          // Note: We'll set up the indexed table just before insertion in the sequential inserter
-          sequentialDatabases.push({ database: this.postgresql, databaseType: 'postgresql', withIndex: true });
+          console.log(`Setting up PostgreSQL table (with index)...`);
+          await this.postgresqlIndexed.dropTable();
+          await this.postgresqlIndexed.createTableWithIndex();
+          sequentialDatabases.push({ database: this.postgresqlIndexed, databaseType: 'postgresql', withIndex: true });
         }
         
         // Run sequential insertion with comparative progress bars
@@ -221,7 +229,8 @@ export class PerformanceTester {
   }
 
   private async executeQueries(config: TestConfiguration): Promise<QueryResult[]> {
-    const database = config.database === 'clickhouse' ? this.clickhouse : this.postgresql;
+    const database = config.database === 'clickhouse' ? this.clickhouse : 
+                    (config.withIndex ? this.postgresqlIndexed : this.postgresql);
     const queries = TestQueries.getQueries();
     const results: QueryResult[] = [];
 
@@ -389,7 +398,8 @@ export class PerformanceTester {
       eta_formatted: 'N/A'
     });
     
-    const database = config.database === 'clickhouse' ? this.clickhouse : this.postgresql;
+    const database = config.database === 'clickhouse' ? this.clickhouse : 
+                    (config.withIndex ? this.postgresqlIndexed : this.postgresql);
     const queries = TestQueries.getQueries();
     
     // Store all iteration results for statistical analysis

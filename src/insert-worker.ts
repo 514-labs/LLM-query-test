@@ -5,7 +5,7 @@ import { InsertJob, InsertResult } from './parallel-inserter';
 
 // Worker thread for parallel insertion
 async function processInsertJob(job: InsertJob): Promise<InsertResult> {
-  const { records, database, jobId } = job;
+  const { records, database, jobId, dbConfig } = job;
   
   try {
     let db: ClickHouseDatabase | PostgreSQLDatabase;
@@ -14,7 +14,7 @@ async function processInsertJob(job: InsertJob): Promise<InsertResult> {
       db = new ClickHouseDatabase();
       await db.connect();
     } else {
-      db = new PostgreSQLDatabase();
+      db = new PostgreSQLDatabase(dbConfig);
       await db.connect();
     }
 
