@@ -208,12 +208,35 @@ export class ASCIIGraphGenerator {
   private static createHorizontalBarChart(
     data: Array<{label: string, value: number, setupTime?: number, timedOut?: boolean}>,
     unit: string,
-    maxBarLength: number = 40
+    maxBarLength: number = 40,
+    highlightWinner: boolean = false
   ): void {
     if (data.length === 0) return;
 
     const maxValue = Math.max(...data.map(d => d.value));
     const maxLabelLength = Math.max(...data.map(d => d.label.length));
+    
+    // Find winner(s) for highlighting - group by dataset size first
+    let winners: Set<string> = new Set();
+    if (highlightWinner) {
+      const sizeGroups: Record<string, Array<{label: string, value: number}>> = {};
+      data.forEach(item => {
+        const sizeMatch = item.label.match(/^(\d+[KMB]?)\s/);
+        if (sizeMatch) {
+          const size = sizeMatch[1];
+          if (!sizeGroups[size]) sizeGroups[size] = [];
+          sizeGroups[size].push(item);
+        }
+      });
+      
+      // Find winner for each size group
+      Object.values(sizeGroups).forEach(group => {
+        const minValue = Math.min(...group.map(g => g.value));
+        group.filter(g => g.value === minValue).forEach(winner => {
+          winners.add(winner.label);
+        });
+      });
+    }
 
     data.forEach(item => {
       const barLength = maxValue > 0 ? Math.round((item.value / maxValue) * maxBarLength) : 0;
@@ -221,7 +244,12 @@ export class ASCIIGraphGenerator {
       const padding = ' '.repeat(Math.max(0, maxLabelLength - item.label.length));
       const timeoutFlag = item.timedOut ? ' ⚠️' : '';
       
-      console.log(`  ${item.label}${padding} │${bar.padEnd(maxBarLength)} ${item.value.toFixed(1)} ${unit}${timeoutFlag}`);
+      // Highlight winner with green color
+      const isWinner = winners.has(item.label);
+      const labelColor = isWinner ? '\x1b[32m' : '';  // Green for winner
+      const resetColor = isWinner ? '\x1b[0m' : '';
+      
+      console.log(`  ${labelColor}${item.label}${padding}${resetColor} │${bar.padEnd(maxBarLength)} ${labelColor}${item.value.toFixed(1)} ${unit}${resetColor}${timeoutFlag}`);
       
       // Show setup time if provided
       if (item.setupTime && item.setupTime > 0) {
@@ -348,6 +376,7 @@ export class ASCIIGraphGenerator {
         const results = resultsBySize[size];
         const ch = results.find(r => r.configuration.database === 'clickhouse');
         const pg = results.find(r => r.configuration.database === 'postgresql' && !r.configuration.withIndex);
+        const pgIdx = results.find(r => r.configuration.database === 'postgresql' && r.configuration.withIndex);
         
         if (ch && ch.queryResults[queryIndex]) {
           graphData.push({
@@ -362,11 +391,77 @@ export class ASCIIGraphGenerator {
             value: pg.queryResults[queryIndex].duration
           });
         }
+        
+        if (pgIdx && pgIdx.queryResults[queryIndex]) {
+          graphData.push({
+            label: `${size} PG w/Idx`,
+            value: pgIdx.queryResults[queryIndex].duration
+          });
+        }
       }
       
       if (graphData.length > 0) {
-        this.createHorizontalBarChart(graphData, 'Time (ms)', 60);
+        this.createHorizontalBarChart(graphData, 'Time (ms)', 60, true);
       }
+    }
+    
+    // Add total section with stacked bars
+    console.log('\nTotal (all queries combined):');
+    console.log('Legend: █ Q1 ▓ Q2 ▒ Q3 ░ Q4');
+    
+    for (const size of sortedSizes) {
+      const results = resultsBySize[size];
+      const databases = [
+        { db: results.find(r => r.configuration.database === 'clickhouse'), label: 'CH' },
+        { db: results.find(r => r.configuration.database === 'postgresql' && !r.configuration.withIndex), label: 'PG' },
+        { db: results.find(r => r.configuration.database === 'postgresql' && r.configuration.withIndex), label: 'PG w/Idx' }
+      ];
+      
+      // Calculate totals for finding winner
+      const totals = databases
+        .filter(({ db }) => db && db.queryResults)
+        .map(({ db, label }) => ({
+          label,
+          total: db!.queryResults.reduce((sum, q) => sum + (q?.duration || 0), 0)
+        }));
+      
+      const minTotal = totals.length > 0 ? Math.min(...totals.map(t => t.total)) : 0;
+      
+      databases.forEach(({ db, label }) => {
+        if (!db || !db.queryResults) return;
+        
+        const q1 = db.queryResults[0]?.duration || 0;
+        const q2 = db.queryResults[1]?.duration || 0;
+        const q3 = db.queryResults[2]?.duration || 0;
+        const q4 = db.queryResults[3]?.duration || 0;
+        const total = q1 + q2 + q3 + q4;
+        
+        // Calculate bar lengths (60 chars max width)
+        const maxTotal = Math.max(...databases
+          .filter(d => d.db && d.db.queryResults)
+          .map(d => d.db!.queryResults.reduce((sum, q) => sum + (q?.duration || 0), 0))
+        );
+        
+        const scale = maxTotal > 0 ? 50 / maxTotal : 0;
+        const q1Length = Math.round(q1 * scale);
+        const q2Length = Math.round(q2 * scale);
+        const q3Length = Math.round(q3 * scale);
+        const q4Length = Math.round(q4 * scale);
+        
+        const q1Bar = '█'.repeat(q1Length);
+        const q2Bar = '▓'.repeat(q2Length);
+        const q3Bar = '▒'.repeat(q3Length);
+        const q4Bar = '░'.repeat(q4Length);
+        
+        const fullLabel = `${size} ${label}`.padEnd(12);
+        const isWinner = Math.abs(total - minTotal) < 0.01;
+        const color = isWinner ? '\x1b[32m' : '';  // Green for winner
+        const reset = isWinner ? '\x1b[0m' : '';
+        
+        console.log(`  ${color}${fullLabel}${reset} │${q1Bar}${q2Bar}${q3Bar}${q4Bar} ${color}${total.toFixed(1)} ms${reset}`);
+      });
+      
+      console.log(''); // Empty line between dataset sizes
     }
   }
 
