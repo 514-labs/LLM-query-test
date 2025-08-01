@@ -13,7 +13,8 @@
     "test": "npm run build && npm start",
     "query-test": "npm run build && node dist/index.js --query-only",
     "graphs": "npm run build && node dist/generate-graphs.js",
-    "latency-sim": "npm run build && node dist/latency-simulator.js",
+    "latency-sim": "npm run build && node dist/charm-latency-simulator.js",
+    "latency-sim-old": "npm run build && node dist/latency-simulator.js",
     "clean": "npm run build && node dist/cleanup.js",
     "clean:db": "npm run build && node dist/cleanup.js --db-only",
     "clean:output": "npm run build && node dist/cleanup.js --output-only",
@@ -21,8 +22,12 @@
   },
   "dependencies": {
     "@clickhouse/client": "^0.2.5",
+    "@inquirer/confirm": "^5.1.14",
+    "@inquirer/select": "^4.3.1",
     "@types/cli-progress": "^3.11.6",
+    "chalk": "^5.4.1",
     "cli-progress": "^3.12.0",
+    "cli-spinners": "^3.2.0",
     "dotenv": "^16.3.1",
     "pg": "^8.11.3"
   },
