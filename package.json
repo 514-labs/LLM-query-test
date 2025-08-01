@@ -13,6 +13,7 @@
     "test": "npm run build && npm start",
     "query-test": "npm run build && node dist/index.js --query-only",
     "graphs": "npm run build && node dist/generate-graphs.js",
+    "latency-sim": "npm run build && node dist/latency-simulator.js",
     "clean": "npm run build && node dist/cleanup.js",
     "clean:db": "npm run build && node dist/cleanup.js --db-only",
     "clean:output": "npm run build && node dist/cleanup.js --output-only",
