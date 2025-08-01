@@ -23,20 +23,20 @@ Tests LLM-style query patterns against transactional (PostgreSQL) and OLAP (Clic
 
 **Quick Start - Docker Containers**
 ```bash
-# Start all databases with equal resource allocation for fair testing
+# Start all databases with configurable resource allocation
 npm run start-dbs
 
-# This creates:
-# - ClickHouse on port 8123
-# - PostgreSQL (no indexes) on port 5432
-# - PostgreSQL (with indexes) on port 5433
+# This creates (using .env configuration):
+# - ClickHouse on port 8123 (configurable memory/CPU)
+# - PostgreSQL (no indexes) on port 5432 (configurable memory/CPU)  
+# - PostgreSQL (with indexes) on port 5433 (configurable memory/CPU)
 ```
 
 **Manual Setup**
 
 *ClickHouse Server*
 ```bash
-# Docker (with equal resource allocation for fair testing)
+# Docker (adjust memory/CPU as needed)
 docker run -d --name clickhouse-server --memory=4g --cpus=2 --ulimit nofile=262144:262144 -p 8123:8123 -p 9000:9000 -e CLICKHOUSE_PASSWORD=password clickhouse/clickhouse-server
 
 # Or install locally
@@ -49,7 +49,7 @@ curl https://clickhouse.com/ | sh
 # PostgreSQL without indexes (port 5432)
 docker run -d --name postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 --memory=4g --cpus=2 postgres:15
 
-# PostgreSQL with indexes (port 5433)
+# PostgreSQL with indexes (port 5433)  
 docker run -d --name postgres-indexed -e POSTGRES_PASSWORD=postgres -p 5433:5432 --memory=4g --cpus=2 postgres:15
 
 # Or install locally and run two instances
@@ -77,9 +77,11 @@ npm run query-test -- --iterations=200 --time-limit=30  # 200 iterations with 30
 npm run bulk-test                                  # Run comprehensive bulk testing across multiple dataset sizes
 npm run graphs                                     # Generate ASCII performance graphs from output files
 npm run graphs -- --update-readme                 # Generate graphs AND update README results section
+npm run latency-sim                                # Interactive latency simulator showing real-world impact
 npm run clean                                      # Clear databases and result files (fresh start)
 npm run clean:db                                   # Clear database tables only
 npm run clean:output                               # Clear result files only
+npm run start-dbs                                  # Start all database containers with resource limits
 npm run kill-dbs                                   # Remove all database containers
 npm run help                                       # Show detailed command reference
 ```
@@ -93,11 +95,24 @@ npm run query-test -- --help                      # Show help for query-only tes
 ## Configuration
 
 Edit `.env` file to configure:
-- Database connections (host, port, password)
-- Dataset size for testing (`DATASET_SIZE`)
-- Batch size for data insertion
-- **Parallel insertion**: Set `PARALLEL_INSERT=true` for 2-4x faster data loading
-- Worker count: `PARALLEL_WORKERS=4` (adjust based on CPU cores)
+
+### Database Connections
+- **ClickHouse**: `CLICKHOUSE_HOST`, `CLICKHOUSE_PORT`, `CLICKHOUSE_PASSWORD`
+- **PostgreSQL (no index)**: `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_PASSWORD`
+- **PostgreSQL (with index)**: `POSTGRES_INDEXED_HOST`, `POSTGRES_INDEXED_PORT`, `POSTGRES_INDEXED_PASSWORD`
+
+### Container Resources
+Control Docker container resource allocation for fair testing:
+- **Memory limits**: `CLICKHOUSE_MEMORY=4g`, `POSTGRES_MEMORY=4g`, `POSTGRES_INDEXED_MEMORY=4g`
+- **CPU limits**: `CLICKHOUSE_CPUS=2`, `POSTGRES_CPUS=2`, `POSTGRES_INDEXED_CPUS=2`
+- **Examples**: Use `1g` for lightweight testing, `8g` for high-performance scenarios
+
+### Performance Testing
+- **Dataset size**: `DATASET_SIZE=10000000` (default 10M rows)
+- **Batch size**: `BATCH_SIZE=50000` for data insertion
+- **Parallel insertion**: `PARALLEL_INSERT=true` for 2-4x faster data loading
+- **Worker count**: `PARALLEL_WORKERS=4` (adjust based on CPU cores)
+- **Bulk testing**: `BULK_TEST_SIZES=10K,50K,100K,500K,1M,5M,10M,25M`
 
 ### Advanced Features
 
@@ -118,6 +133,13 @@ Edit `.env` file to configure:
 - Real-time monitoring during data generation
 - Automatic warnings at 85% memory usage
 - Critical alerts at 95% memory usage with suggestions
+
+**🎯 Latency Simulator**: Interactive demonstration of real-world performance impact:
+- Choose dataset size and database configuration
+- Experience realistic chat conversation delays
+- Uses actual test statistics with natural variance
+- Individual query timing (Q1-Q4) with proper standard deviations
+- Demonstrates why database performance matters for user experience
 
 ## Output
 
@@ -143,10 +165,12 @@ Features:
 - Reads all JSON result files from `output/` directory
 - Automatically detects load tests vs query-only tests
 - Shows horizontal bar charts for query performance
+- **🏆 Winner highlighting**: Fastest database for each query/dataset in green
 - Highlights timeout warnings for incomplete tests (⚠️)
 - Displays both mean and median statistics for multi-iteration tests
 - Includes setup time visualization
 - Groups results by dataset size for easy comparison
+- **Query breakdown**: Individual Q1-Q4 performance with stacked total bars using ASCII shades
 - **`--update-readme`**: Injects benchmark summaries into README.md (preserves Test Environment section)
 
 ### Cleanup Commands

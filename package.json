@@ -4,7 +4,7 @@
   "description": "Performance testing application for ClickHouse vs PostgreSQL",
   "main": "dist/index.js",
   "scripts": {
-    "start-dbs": "docker rm -f clickhouse-server postgres postgres-indexed 2>/dev/null || true && docker run -d --name clickhouse-server --memory=4g --cpus=2 --ulimit nofile=262144:262144 -p 8123:8123 -p 9000:9000 -e CLICKHOUSE_PASSWORD=password clickhouse/clickhouse-server && docker run -d --name postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 --memory=4g --cpus=2 postgres:15 && docker run -d --name postgres-indexed -e POSTGRES_PASSWORD=postgres -p 5433:5432 --memory=4g --cpus=2 postgres:15",
+    "start-dbs": "npm run build && node dist/start-databases.js",
     "kill-dbs": "./cleanup-containers.sh",
     "bulk-test": "npm run build && node dist/bulk-tester.js",
     "build": "tsc",

@@ -12,6 +12,8 @@ export const config = {
     database: process.env.CLICKHOUSE_DATABASE || 'performance_test',
     username: process.env.CLICKHOUSE_USERNAME || 'default',
     password: process.env.CLICKHOUSE_PASSWORD || '',
+    memory: process.env.CLICKHOUSE_MEMORY || '4g',
+    cpus: process.env.CLICKHOUSE_CPUS || '2',
   },
   postgres: {
     host: process.env.POSTGRES_HOST || 'localhost',
@@ -19,6 +21,8 @@ export const config = {
     database: process.env.POSTGRES_DATABASE || 'performance_test',
     username: process.env.POSTGRES_USERNAME || 'postgres',
     password: process.env.POSTGRES_PASSWORD || 'postgres',
+    memory: process.env.POSTGRES_MEMORY || '4g',
+    cpus: process.env.POSTGRES_CPUS || '2',
   },
   postgresIndexed: {
     host: process.env.POSTGRES_INDEXED_HOST || 'localhost',
@@ -26,6 +30,8 @@ export const config = {
     database: process.env.POSTGRES_INDEXED_DATABASE || 'performance_test',
     username: process.env.POSTGRES_INDEXED_USERNAME || 'postgres',
     password: process.env.POSTGRES_INDEXED_PASSWORD || 'postgres',
+    memory: process.env.POSTGRES_INDEXED_MEMORY || '4g',
+    cpus: process.env.POSTGRES_INDEXED_CPUS || '2',
   },
   test: {
     datasetSize: parseInt(process.env.DATASET_SIZE || '10000000'),
