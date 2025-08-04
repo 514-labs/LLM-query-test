@@ -26,6 +26,8 @@ export interface TestResults {
     min: number[];
     max: number[];
     stdDev: number[];
+    confidenceInterval95: Array<{lower: number, upper: number}>;
+    pValue?: number; // For comparing with previous runs
   };
 }
 
@@ -35,11 +37,11 @@ export class PerformanceTester {
   private postgresqlIndexed: PostgreSQLDatabase;
   private dataGenerator: DataGenerator;
 
-  constructor() {
+  constructor(seed?: string) {
     this.clickhouse = new ClickHouseDatabase();
     this.postgresql = new PostgreSQLDatabase();
     this.postgresqlIndexed = new PostgreSQLDatabase(config.postgresIndexed);
-    this.dataGenerator = new DataGenerator();
+    this.dataGenerator = new DataGenerator(seed || process.env.BENCHMARK_SEED);
   }
 
   async initialize(): Promise<void> {
@@ -64,6 +66,25 @@ export class PerformanceTester {
     console.log('Database connections closed');
   }
 
+  async warmupDatabase(database: any, databaseName: string): Promise<void> {
+    console.log(`🔥 Warming up ${databaseName} database...`);
+    const queries = TestQueries.getQueries();
+    
+    // Run each query 3 times for warmup
+    for (let i = 0; i < 3; i++) {
+      for (const queryDef of Object.values(queries)) {
+        const query = database instanceof ClickHouseDatabase ? queryDef.clickhouse : queryDef.postgresql;
+        try {
+          await TestQueries.executeQuery(database, query, `${databaseName} warmup`, true);
+        } catch (error) {
+          // Ignore warmup errors - they might be due to empty tables
+          console.log(`  Warmup query failed (expected for empty tables): ${(error as Error).message.slice(0, 100)}...`);
+        }
+      }
+    }
+    console.log(`✅ ${databaseName} database warmed up`);
+  }
+
   async runTest(config: TestConfiguration): Promise<TestResults> {
     console.log(`\n=== Running test: ${config.database.toUpperCase()} ${config.rowCount.toLocaleString()} rows ${config.withIndex ? '(with index)' : '(no index)'} ===`);
     
@@ -74,6 +95,11 @@ export class PerformanceTester {
     await this.setupTest(config);
     const setupEndTime = process.hrtime.bigint();
     const setupTime = Number(setupEndTime - setupStartTime) / 1_000_000;
+
+    // Warmup phase
+    const database = config.database === 'clickhouse' ? this.clickhouse : 
+                    (config.withIndex ? this.postgresqlIndexed : this.postgresql);
+    await this.warmupDatabase(database, `${config.database}${config.withIndex ? '-indexed' : ''}`);
 
     // Query execution phase
     const queryResults = await this.executeQueries(config);
@@ -484,6 +510,8 @@ export class PerformanceTester {
     min: number[];
     max: number[];
     stdDev: number[];
+    confidenceInterval95: Array<{lower: number, upper: number}>;
+    pValue?: number;
   } {
     const numQueries = allIterationResults[0].length;
     const stats = {
@@ -491,7 +519,8 @@ export class PerformanceTester {
       median: new Array(numQueries).fill(0),
       min: new Array(numQueries).fill(Infinity),
       max: new Array(numQueries).fill(0),
-      stdDev: new Array(numQueries).fill(0)
+      stdDev: new Array(numQueries).fill(0),
+      confidenceInterval95: new Array(numQueries).fill(null).map(() => ({ lower: 0, upper: 0 }))
     };
 
     // Collect all durations for each query
@@ -507,12 +536,13 @@ export class PerformanceTester {
       }
     }
 
-    // Calculate mean, median, and standard deviation for each query
+    // Calculate mean, median, standard deviation, and confidence intervals for each query
     for (let queryIndex = 0; queryIndex < numQueries; queryIndex++) {
       const durations = queryDurations[queryIndex];
+      const n = durations.length;
       
       // Mean
-      stats.mean[queryIndex] = durations.reduce((sum, d) => sum + d, 0) / durations.length;
+      stats.mean[queryIndex] = durations.reduce((sum, d) => sum + d, 0) / n;
       
       // Median
       const sorted = [...durations].sort((a, b) => a - b);
@@ -522,8 +552,18 @@ export class PerformanceTester {
         : sorted[mid];
       
       // Standard deviation
-      const variance = durations.reduce((sum, d) => sum + Math.pow(d - stats.mean[queryIndex], 2), 0) / durations.length;
+      const variance = durations.reduce((sum, d) => sum + Math.pow(d - stats.mean[queryIndex], 2), 0) / n;
       stats.stdDev[queryIndex] = Math.sqrt(variance);
+      
+      // 95% Confidence Interval using t-distribution approximation
+      // For large samples (n > 30), t ≈ 1.96; for smaller samples, we use a conservative 2.0
+      const tValue = n > 30 ? 1.96 : 2.0;
+      const marginOfError = tValue * (stats.stdDev[queryIndex] / Math.sqrt(n));
+      
+      stats.confidenceInterval95[queryIndex] = {
+        lower: Math.max(0, stats.mean[queryIndex] - marginOfError), // Ensure non-negative times
+        upper: stats.mean[queryIndex] + marginOfError
+      };
     }
 
     return stats;

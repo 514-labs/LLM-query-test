@@ -6,10 +6,9 @@ import { InsertJob, InsertResult } from './parallel-inserter';
 // Worker thread for parallel insertion
 async function processInsertJob(job: InsertJob): Promise<InsertResult> {
   const { records, database, jobId, dbConfig } = job;
+  let db: ClickHouseDatabase | PostgreSQLDatabase | null = null;
   
   try {
-    let db: ClickHouseDatabase | PostgreSQLDatabase;
-    
     if (database === 'clickhouse') {
       db = new ClickHouseDatabase();
       await db.connect();
@@ -21,8 +20,6 @@ async function processInsertJob(job: InsertJob): Promise<InsertResult> {
     const startTime = Date.now();
     await db.insertBatch(records);
     const duration = Date.now() - startTime;
-
-    await db.disconnect();
 
     return {
       jobId,
@@ -36,6 +33,16 @@ async function processInsertJob(job: InsertJob): Promise<InsertResult> {
       error: error instanceof Error ? error.message : String(error),
       duration: 0
     };
+  } finally {
+    // Always disconnect, even on error
+    if (db) {
+      try {
+        await db.disconnect();
+      } catch (disconnectError) {
+        // Log but don't throw - connection may already be closed
+        console.error(`Worker ${jobId}: Error disconnecting: ${disconnectError}`);
+      }
+    }
   }
 }
 

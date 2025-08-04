@@ -32,7 +32,10 @@ export class ResultsReporter {
       const tableData = this.createComparisonTable(sizeResults);
       this.printTable(tableData);
       
-      // Statistical details removed for cleaner output
+      // Show detailed statistics for query-only tests
+      if (isQueryOnly) {
+        this.printQueryStatistics(sizeResults);
+      }
       
       // Add performance insights
       this.printPerformanceInsights(sizeResults);
@@ -241,7 +244,10 @@ export class ResultsReporter {
       const queryNames = ['Q1', 'Q2', 'Q3', 'Q4'];
       for (let i = 0; i < queryNames.length; i++) {
         const stats = result.queryStats;
-        console.log(`  ${queryNames[i]}: median=${stats.median[i].toFixed(1)} mean=${stats.mean[i].toFixed(1)} ±${stats.stdDev[i].toFixed(1)} range=[${stats.min[i].toFixed(1)}-${stats.max[i].toFixed(1)}]`);
+        const ci = stats.confidenceInterval95 && stats.confidenceInterval95[i] 
+          ? ` CI95=[${stats.confidenceInterval95[i].lower.toFixed(1)}-${stats.confidenceInterval95[i].upper.toFixed(1)}]`
+          : '';
+        console.log(`  ${queryNames[i]}: median=${stats.median[i].toFixed(1)} mean=${stats.mean[i].toFixed(1)} ±${stats.stdDev[i].toFixed(1)} range=[${stats.min[i].toFixed(1)}-${stats.max[i].toFixed(1)}]${ci}`);
       }
     }
   }
@@ -357,21 +363,29 @@ export class ResultsReporter {
       'Q1_StdDev_ms',
       'Q1_Min_ms',
       'Q1_Max_ms',
+      'Q1_CI95_Lower_ms',
+      'Q1_CI95_Upper_ms',
       'Q2_Mean_ms',
       'Q2_Median_ms',
       'Q2_StdDev_ms',
       'Q2_Min_ms',
       'Q2_Max_ms',
+      'Q2_CI95_Lower_ms',
+      'Q2_CI95_Upper_ms',
       'Q3_Mean_ms',
       'Q3_Median_ms',
       'Q3_StdDev_ms',
       'Q3_Min_ms',
       'Q3_Max_ms',
+      'Q3_CI95_Lower_ms',
+      'Q3_CI95_Upper_ms',
       'Q4_Mean_ms',
       'Q4_Median_ms',
       'Q4_StdDev_ms',
       'Q4_Min_ms',
       'Q4_Max_ms',
+      'Q4_CI95_Lower_ms',
+      'Q4_CI95_Upper_ms',
       'Total_Mean_ms',
       'Total_Median_ms',
       'Total_StdDev_ms',
@@ -398,21 +412,29 @@ export class ResultsReporter {
           '0',
           result.queryResults[0]?.duration.toFixed(2) || '0',
           result.queryResults[0]?.duration.toFixed(2) || '0',
+          result.queryResults[0]?.duration.toFixed(2) || '0', // CI95 lower
+          result.queryResults[0]?.duration.toFixed(2) || '0', // CI95 upper
           result.queryResults[1]?.duration.toFixed(2) || '0',
           result.queryResults[1]?.duration.toFixed(2) || '0',
           '0',
           result.queryResults[1]?.duration.toFixed(2) || '0',
           result.queryResults[1]?.duration.toFixed(2) || '0',
+          result.queryResults[1]?.duration.toFixed(2) || '0', // CI95 lower
+          result.queryResults[1]?.duration.toFixed(2) || '0', // CI95 upper
           result.queryResults[2]?.duration.toFixed(2) || '0',
           result.queryResults[2]?.duration.toFixed(2) || '0',
           '0',
           result.queryResults[2]?.duration.toFixed(2) || '0',
           result.queryResults[2]?.duration.toFixed(2) || '0',
+          result.queryResults[2]?.duration.toFixed(2) || '0', // CI95 lower
+          result.queryResults[2]?.duration.toFixed(2) || '0', // CI95 upper
           result.queryResults[3]?.duration.toFixed(2) || '0',
           result.queryResults[3]?.duration.toFixed(2) || '0',
           '0',
           result.queryResults[3]?.duration.toFixed(2) || '0',
           result.queryResults[3]?.duration.toFixed(2) || '0',
+          result.queryResults[3]?.duration.toFixed(2) || '0', // CI95 lower
+          result.queryResults[3]?.duration.toFixed(2) || '0', // CI95 upper
           result.totalQueryTime.toFixed(2),
           result.totalQueryTime.toFixed(2),
           '0',
@@ -441,21 +463,29 @@ export class ResultsReporter {
         stats.stdDev[0].toFixed(2),
         stats.min[0].toFixed(2),
         stats.max[0].toFixed(2),
+        stats.confidenceInterval95?.[0]?.lower.toFixed(2) || '0',
+        stats.confidenceInterval95?.[0]?.upper.toFixed(2) || '0',
         stats.mean[1].toFixed(2),
         stats.median[1].toFixed(2),
         stats.stdDev[1].toFixed(2),
         stats.min[1].toFixed(2),
         stats.max[1].toFixed(2),
+        stats.confidenceInterval95?.[1]?.lower.toFixed(2) || '0',
+        stats.confidenceInterval95?.[1]?.upper.toFixed(2) || '0',
         stats.mean[2].toFixed(2),
         stats.median[2].toFixed(2),
         stats.stdDev[2].toFixed(2),
         stats.min[2].toFixed(2),
         stats.max[2].toFixed(2),
+        stats.confidenceInterval95?.[2]?.lower.toFixed(2) || '0',
+        stats.confidenceInterval95?.[2]?.upper.toFixed(2) || '0',
         stats.mean[3].toFixed(2),
         stats.median[3].toFixed(2),
         stats.stdDev[3].toFixed(2),
         stats.min[3].toFixed(2),
         stats.max[3].toFixed(2),
+        stats.confidenceInterval95?.[3]?.lower.toFixed(2) || '0',
+        stats.confidenceInterval95?.[3]?.upper.toFixed(2) || '0',
         totalMean.toFixed(2),
         totalMedian.toFixed(2),
         totalStdDev.toFixed(2),

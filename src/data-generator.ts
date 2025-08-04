@@ -1,5 +1,6 @@
 import { MemoryMonitor } from './progress-reporter';
 import { generateAndInsertParallel, generateAndInsertParallelWithMultiBar, generateAndInsertSequentialWithMultiBar } from './parallel-inserter';
+import seedrandom from 'seedrandom';
 
 export interface AircraftTrackingRecord {
   zorderCoordinate: number;
@@ -62,6 +63,21 @@ export class DataGenerator {
   private militaryCallsigns = ['TETON', 'REACH', 'SENTRY', 'KNIFE', 'VAPOR', 'RIDER'];
   private registrationPrefixes = ['N', 'G-', 'F-', 'D-', 'C-', '92-', '11-', '86-'];
   
+  // Deterministic random generation
+  private seed: string;
+  private rng: seedrandom.PRNG;
+
+  constructor(seed?: string) {
+    this.seed = seed || 'default-benchmark-seed';
+    this.rng = seedrandom(this.seed);
+    console.log(`DataGenerator initialized with seed: ${this.seed}`);
+  }
+
+  // Helper method to get random number from seeded RNG
+  private random(): number {
+    return this.rng();
+  }
+  
   // Geographic regions for realistic positioning
   private regions = [
     { name: 'US_EAST', latRange: [25, 47], lonRange: [-85, -65] },
@@ -72,6 +88,13 @@ export class DataGenerator {
 
   generateTestData(rowCount: number, database?: 'clickhouse' | 'postgresql'): AircraftTrackingRecord[] {
     console.log(`Generating ${rowCount.toLocaleString()} aircraft tracking records...`);
+    
+    // Memory check before generating large datasets
+    const estimatedMemoryMB = (rowCount * 1024) / (1024 * 1024); // ~1KB per record
+    if (estimatedMemoryMB > 1000) {
+      console.warn(`⚠️  Large dataset (${estimatedMemoryMB.toFixed(0)}MB estimated). Using non-streaming generation.`);
+    }
+    
     const data: AircraftTrackingRecord[] = [];
     const startDate = new Date(Date.now() - 24 * 60 * 60 * 1000); // Last 24 hours
     const endDate = new Date();
@@ -82,78 +105,82 @@ export class DataGenerator {
     const aircraft = this.generateAircraft(aircraftCount);
 
     for (let i = 0; i < rowCount; i++) {
-      const randomTime = startDate.getTime() + Math.random() * timeRange;
+      const randomTime = startDate.getTime() + this.random() * timeRange;
       const date = new Date(randomTime);
       
-      // Format timestamp based on database type
+      // Use consistent timestamp format for both databases
+      // Both databases should receive the same logical time values
       let timestamp: string;
       if (database === 'clickhouse') {
+        // ClickHouse DateTime format: 'YYYY-MM-DD HH:MM:SS' (no timezone, interpreted as local)
         timestamp = date.toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, '');
       } else {
-        timestamp = date.toISOString();
+        // PostgreSQL TIMESTAMP format: 'YYYY-MM-DD HH:MM:SS' (no timezone for consistency)
+        // This ensures both databases interpret the same logical time
+        timestamp = date.toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, '');
       }
 
       // Pick a random aircraft and generate realistic tracking data
-      const aircraftData = aircraft[Math.floor(Math.random() * aircraft.length)];
-      const region = this.regions[Math.floor(Math.random() * this.regions.length)];
+      const aircraftData = aircraft[Math.floor(this.random() * aircraft.length)];
+      const region = this.regions[Math.floor(this.random() * this.regions.length)];
       
       // Generate position within region with some flight path continuity
-      const lat = region.latRange[0] + Math.random() * (region.latRange[1] - region.latRange[0]);
-      const lon = region.lonRange[0] + Math.random() * (region.lonRange[1] - region.lonRange[0]);
+      const lat = region.latRange[0] + this.random() * (region.latRange[1] - region.latRange[0]);
+      const lon = region.lonRange[0] + this.random() * (region.lonRange[1] - region.lonRange[0]);
       
       // Realistic altitude based on aircraft type
       const isCommercial = aircraftData.category.startsWith('A') && !aircraftData.flight.includes('TETON');
       const altBaro = isCommercial 
-        ? 20000 + Math.random() * 20000  // Commercial: 20k-40k ft
-        : Math.random() * 15000;         // GA/Military: 0-15k ft
+        ? 20000 + this.random() * 20000  // Commercial: 20k-40k ft
+        : this.random() * 15000;         // GA/Military: 0-15k ft
       
       const record: AircraftTrackingRecord = {
         zorderCoordinate: Math.floor((lat + 90) * 1000000 + (lon + 180) * 1000),
-        approach: Math.random() < 0.05, // 5% on approach
-        autopilot: isCommercial ? Math.random() < 0.8 : Math.random() < 0.3,
-        althold: Math.random() < 0.7,
-        lnav: isCommercial ? Math.random() < 0.6 : Math.random() < 0.2,
-        tcas: isCommercial ? Math.random() < 0.9 : Math.random() < 0.4,
+        approach: this.random() < 0.05, // 5% on approach
+        autopilot: isCommercial ? this.random() < 0.8 : this.random() < 0.3,
+        althold: this.random() < 0.7,
+        lnav: isCommercial ? this.random() < 0.6 : this.random() < 0.2,
+        tcas: isCommercial ? this.random() < 0.9 : this.random() < 0.4,
         hex: aircraftData.hex,
         transponder_type: '',
         flight: aircraftData.flight,
         r: aircraftData.registration,
-        aircraft_type: Math.random() < 0.8 ? this.generateAircraftType() : null,
+        aircraft_type: this.random() < 0.8 ? this.generateAircraftType() : null,
         dbFlags: 1,
         lat: Math.round(lat * 1000000) / 1000000,
         lon: Math.round(lon * 1000000) / 1000000,
         alt_baro: Math.round(altBaro),
         alt_baro_is_ground: altBaro < 50,
-        alt_geom: Math.round(altBaro + (Math.random() - 0.5) * 200),
-        gs: Math.round(Math.random() * 500 + 100), // Ground speed 100-600 knots
-        track: Math.round(Math.random() * 360),
-        baro_rate: Math.round((Math.random() - 0.5) * 4000), // ±2000 fpm
-        geom_rate: Math.random() < 0.9 ? Math.round((Math.random() - 0.5) * 128) : null,
+        alt_geom: Math.round(altBaro + (this.random() - 0.5) * 200),
+        gs: Math.round(this.random() * 500 + 100), // Ground speed 100-600 knots
+        track: Math.round(this.random() * 360),
+        baro_rate: Math.round((this.random() - 0.5) * 4000), // ±2000 fpm
+        geom_rate: this.random() < 0.9 ? Math.round((this.random() - 0.5) * 128) : null,
         squawk: this.generateSquawk(),
-        emergency: this.emergencyStates[Math.floor(Math.random() * this.emergencyStates.length)],
+        emergency: this.emergencyStates[Math.floor(this.random() * this.emergencyStates.length)],
         category: aircraftData.category,
-        nav_qnh: Math.random() < 0.8 ? Math.max(0, Math.round(1013 + (Math.random() - 0.5) * 50)) : null,
-        nav_altitude_mcp: Math.random() < 0.7 ? Math.max(0, Math.round(altBaro + (Math.random() - 0.5) * 1000)) : null,
-        nav_heading: Math.random() < 0.6 ? Math.round(Math.random() * 360) : null,
+        nav_qnh: this.random() < 0.8 ? Math.max(0, Math.round(1013 + (this.random() - 0.5) * 50)) : null,
+        nav_altitude_mcp: this.random() < 0.7 ? Math.max(0, Math.round(altBaro + (this.random() - 0.5) * 1000)) : null,
+        nav_heading: this.random() < 0.6 ? Math.round(this.random() * 360) : null,
         nav_modes: this.generateNavModes(),
-        nic: Math.floor(Math.random() * 11),
-        rc: Math.floor(Math.random() * 500),
-        seen_pos: Math.random() * 10,
-        version: Math.random() < 0.9 ? 2 : 1,
-        nic_baro: Math.floor(Math.random() * 2),
-        nac_p: Math.floor(Math.random() * 12),
-        nac_v: Math.floor(Math.random() * 5),
-        sil: Math.floor(Math.random() * 4),
-        sil_type: this.silTypes[Math.floor(Math.random() * this.silTypes.length)],
-        gva: Math.floor(Math.random() * 3),
-        sda: Math.floor(Math.random() * 3),
+        nic: Math.floor(this.random() * 11),
+        rc: Math.floor(this.random() * 500),
+        seen_pos: this.random() * 10,
+        version: this.random() < 0.9 ? 2 : 1,
+        nic_baro: Math.floor(this.random() * 2),
+        nac_p: Math.floor(this.random() * 12),
+        nac_v: Math.floor(this.random() * 5),
+        sil: Math.floor(this.random() * 4),
+        sil_type: this.silTypes[Math.floor(this.random() * this.silTypes.length)],
+        gva: Math.floor(this.random() * 3),
+        sda: Math.floor(this.random() * 3),
         alert: 0,
         spi: 0,
         mlat: [],
         tisb: [],
-        messages: Math.floor(Math.random() * 100000),
-        seen: Math.random() * 60,
-        rssi: -5 - Math.random() * 15, // -5 to -20 dBm
+        messages: Math.floor(this.random() * 100000),
+        seen: this.random() * 60,
+        rssi: -5 - this.random() * 15, // -5 to -20 dBm
         timestamp: timestamp
       };
 
@@ -171,53 +198,53 @@ export class DataGenerator {
   private generateAircraft(count: number) {
     const aircraft = [];
     for (let i = 0; i < count; i++) {
-      const isMilitary = Math.random() < 0.1;
+      const isMilitary = this.random() < 0.1;
       const prefix = isMilitary 
-        ? this.militaryCallsigns[Math.floor(Math.random() * this.militaryCallsigns.length)]
-        : this.flightPrefixes[Math.floor(Math.random() * this.flightPrefixes.length)];
+        ? this.militaryCallsigns[Math.floor(this.random() * this.militaryCallsigns.length)]
+        : this.flightPrefixes[Math.floor(this.random() * this.flightPrefixes.length)];
       
       aircraft.push({
         hex: this.generateHex(),
         flight: isMilitary 
-          ? `${prefix}${Math.floor(Math.random() * 99).toString().padStart(2, '0')} `
-          : `${prefix}${Math.floor(Math.random() * 9999).toString().padStart(4, '0')}`,
+          ? `${prefix}${Math.floor(this.random() * 99).toString().padStart(2, '0')} `
+          : `${prefix}${Math.floor(this.random() * 9999).toString().padStart(4, '0')}`,
         registration: this.generateRegistration(),
-        category: this.aircraftCategories[Math.floor(Math.random() * this.aircraftCategories.length)]
+        category: this.aircraftCategories[Math.floor(this.random() * this.aircraftCategories.length)]
       });
     }
     return aircraft;
   }
 
   private generateHex(): string {
-    return Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
+    return Math.floor(this.random() * 16777215).toString(16).padStart(6, '0');
   }
 
   private generateRegistration(): string {
-    const prefix = this.registrationPrefixes[Math.floor(Math.random() * this.registrationPrefixes.length)];
-    const suffix = Math.floor(Math.random() * 99999).toString().padStart(4, '0');
+    const prefix = this.registrationPrefixes[Math.floor(this.random() * this.registrationPrefixes.length)];
+    const suffix = Math.floor(this.random() * 99999).toString().padStart(4, '0');
     return `${prefix}${suffix}`;
   }
 
   private generateSquawk(): string {
     // Common squawk codes with realistic distribution
     const common = ['1200', '7000', '2000', '0400'];
-    if (Math.random() < 0.3) {
-      return common[Math.floor(Math.random() * common.length)];
+    if (this.random() < 0.3) {
+      return common[Math.floor(this.random() * common.length)];
     }
-    return Math.floor(Math.random() * 7777).toString().padStart(4, '0');
+    return Math.floor(this.random() * 7777).toString().padStart(4, '0');
   }
 
   private generateNavModes(): string[] {
     const modes: string[] = [];
     this.navModes.forEach(mode => {
-      if (Math.random() < 0.3) modes.push(mode);
+      if (this.random() < 0.3) modes.push(mode);
     });
     return modes;
   }
 
   private generateAircraftType(): string {
     const types = ['B738', 'A320', 'B777', 'A330', 'C172', 'PA28', 'B752', 'E145', 'CRJ2', 'DH8D'];
-    return types[Math.floor(Math.random() * types.length)];
+    return types[Math.floor(this.random() * types.length)];
   }
 
   async generateAndInsertInBatches(database: any, rowCount: number, databaseType: 'clickhouse' | 'postgresql', batchSize: number = 50000): Promise<void> {
@@ -253,74 +280,78 @@ export class DataGenerator {
       
       // Generate batch in memory
       for (let j = 0; j < currentBatchSize; j++) {
-        const randomTime = startDate.getTime() + Math.random() * timeRange;
+        const randomTime = startDate.getTime() + this.random() * timeRange;
         const date = new Date(randomTime);
         
+        // Use consistent timestamp format for both databases
         let timestamp: string;
         if (databaseType === 'clickhouse') {
+          // ClickHouse DateTime format: 'YYYY-MM-DD HH:MM:SS' (no timezone, interpreted as local)
           timestamp = date.toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, '');
         } else {
-          timestamp = date.toISOString();
+          // PostgreSQL TIMESTAMP format: 'YYYY-MM-DD HH:MM:SS' (no timezone for consistency)
+          // This ensures both databases interpret the same logical time
+          timestamp = date.toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, '');
         }
 
-        const aircraftData = aircraft[Math.floor(Math.random() * aircraft.length)];
-        const region = this.regions[Math.floor(Math.random() * this.regions.length)];
+        const aircraftData = aircraft[Math.floor(this.random() * aircraft.length)];
+        const region = this.regions[Math.floor(this.random() * this.regions.length)];
         
-        const lat = region.latRange[0] + Math.random() * (region.latRange[1] - region.latRange[0]);
-        const lon = region.lonRange[0] + Math.random() * (region.lonRange[1] - region.lonRange[0]);
+        const lat = region.latRange[0] + this.random() * (region.latRange[1] - region.latRange[0]);
+        const lon = region.lonRange[0] + this.random() * (region.lonRange[1] - region.lonRange[0]);
         
         const isCommercial = aircraftData.category.startsWith('A') && !aircraftData.flight.includes('TETON');
         const altBaro = isCommercial 
-          ? 20000 + Math.random() * 20000
-          : Math.random() * 15000;
+          ? 20000 + this.random() * 20000
+          : this.random() * 15000;
         
         const record: AircraftTrackingRecord = {
           zorderCoordinate: Math.floor((lat + 90) * 1000000 + (lon + 180) * 1000),
-          approach: Math.random() < 0.05,
-          autopilot: isCommercial ? Math.random() < 0.8 : Math.random() < 0.3,
-          althold: Math.random() < 0.7,
-          lnav: isCommercial ? Math.random() < 0.6 : Math.random() < 0.2,
-          tcas: isCommercial ? Math.random() < 0.9 : Math.random() < 0.4,
+          approach: this.random() < 0.05,
+          autopilot: isCommercial ? this.random() < 0.8 : this.random() < 0.3,
+          althold: this.random() < 0.7,
+          lnav: isCommercial ? this.random() < 0.6 : this.random() < 0.2,
+          tcas: isCommercial ? this.random() < 0.9 : this.random() < 0.4,
           hex: aircraftData.hex,
           transponder_type: '',
           flight: aircraftData.flight,
           r: aircraftData.registration,
-          aircraft_type: Math.random() < 0.8 ? this.generateAircraftType() : null,
+          aircraft_type: this.random() < 0.8 ? this.generateAircraftType() : null,
           dbFlags: 1,
           lat: Math.round(lat * 1000000) / 1000000,
           lon: Math.round(lon * 1000000) / 1000000,
           alt_baro: Math.round(altBaro),
           alt_baro_is_ground: altBaro < 50,
-          alt_geom: Math.round(altBaro + (Math.random() - 0.5) * 200),
-          gs: Math.round(Math.random() * 500 + 100),
-          track: Math.round(Math.random() * 360),
-          baro_rate: Math.round((Math.random() - 0.5) * 4000),
-          geom_rate: Math.random() < 0.9 ? Math.round((Math.random() - 0.5) * 128) : null,
+          alt_geom: Math.round(altBaro + (this.random() - 0.5) * 200),
+          gs: Math.round(this.random() * 500 + 100),
+          track: Math.round(this.random() * 360),
+          baro_rate: Math.round((this.random() - 0.5) * 4000),
+          geom_rate: this.random() < 0.9 ? Math.round((this.random() - 0.5) * 128) : null,
           squawk: this.generateSquawk(),
-          emergency: this.emergencyStates[Math.floor(Math.random() * this.emergencyStates.length)],
+          emergency: this.emergencyStates[Math.floor(this.random() * this.emergencyStates.length)],
           category: aircraftData.category,
-          nav_qnh: Math.random() < 0.8 ? Math.max(0, Math.round(1013 + (Math.random() - 0.5) * 50)) : null,
-          nav_altitude_mcp: Math.random() < 0.7 ? Math.max(0, Math.round(altBaro + (Math.random() - 0.5) * 1000)) : null,
-          nav_heading: Math.random() < 0.6 ? Math.round(Math.random() * 360) : null,
+          nav_qnh: this.random() < 0.8 ? Math.max(0, Math.round(1013 + (this.random() - 0.5) * 50)) : null,
+          nav_altitude_mcp: this.random() < 0.7 ? Math.max(0, Math.round(altBaro + (this.random() - 0.5) * 1000)) : null,
+          nav_heading: this.random() < 0.6 ? Math.round(this.random() * 360) : null,
           nav_modes: this.generateNavModes(),
-          nic: Math.floor(Math.random() * 11),
-          rc: Math.floor(Math.random() * 500),
-          seen_pos: Math.random() * 10,
-          version: Math.random() < 0.9 ? 2 : 1,
-          nic_baro: Math.floor(Math.random() * 2),
-          nac_p: Math.floor(Math.random() * 12),
-          nac_v: Math.floor(Math.random() * 5),
-          sil: Math.floor(Math.random() * 4),
-          sil_type: this.silTypes[Math.floor(Math.random() * this.silTypes.length)],
-          gva: Math.floor(Math.random() * 3),
-          sda: Math.floor(Math.random() * 3),
+          nic: Math.floor(this.random() * 11),
+          rc: Math.floor(this.random() * 500),
+          seen_pos: this.random() * 10,
+          version: this.random() < 0.9 ? 2 : 1,
+          nic_baro: Math.floor(this.random() * 2),
+          nac_p: Math.floor(this.random() * 12),
+          nac_v: Math.floor(this.random() * 5),
+          sil: Math.floor(this.random() * 4),
+          sil_type: this.silTypes[Math.floor(this.random() * this.silTypes.length)],
+          gva: Math.floor(this.random() * 3),
+          sda: Math.floor(this.random() * 3),
           alert: 0,
           spi: 0,
           mlat: [],
           tisb: [],
-          messages: Math.floor(Math.random() * 100000),
-          seen: Math.random() * 60,
-          rssi: -5 - Math.random() * 15,
+          messages: Math.floor(this.random() * 100000),
+          seen: this.random() * 60,
+          rssi: -5 - this.random() * 15,
           timestamp: timestamp
         };
 
