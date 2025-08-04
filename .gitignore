@@ -13,6 +13,8 @@ build/
 output/
 test-results/
 coverage/
+tests/*.js
+tests/*.js.map
 
 # Environment variables
 .env.local
