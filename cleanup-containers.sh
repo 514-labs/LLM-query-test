@@ -31,4 +31,15 @@ else
     echo "ℹ️  PostgreSQL indexed container not found"
 fi
 
-echo "🎉 Database container cleanup complete!"
+# Clean up any orphaned volumes from database containers
+echo "🧹 Cleaning up orphaned Docker volumes..."
+ORPHANED_VOLUMES=$(docker volume ls -q --filter dangling=true)
+if [ ! -z "$ORPHANED_VOLUMES" ]; then
+    echo "Removing $(echo "$ORPHANED_VOLUMES" | wc -l) orphaned volume(s)..."
+    echo "$ORPHANED_VOLUMES" | xargs docker volume rm
+    echo "✅ Orphaned volumes cleaned up"
+else
+    echo "ℹ️  No orphaned volumes to clean"
+fi
+
+echo "🎉 Database container and volume cleanup complete!"
