@@ -123,7 +123,10 @@ export class ClickHouseDatabase {
           rssi Float32,
           timestamp DateTime
         ) ENGINE = MergeTree()
-        ORDER BY (timestamp, hex)
+        -- Optimized ORDER BY: low cardinality filter column first (boolean),
+        -- then timestamp for range queries, finally hex for deduplication
+        -- This matches Q3/Q4 query patterns: WHERE alt_baro_is_ground = 0 AND timestamp >= X GROUP BY timestamp, hex
+        ORDER BY (alt_baro_is_ground, timestamp, hex)
       `
     });
   }
