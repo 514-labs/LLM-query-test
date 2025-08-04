@@ -270,149 +270,29 @@ export async function generateAndInsertParallel(
   
   Logger.info(`Initializing parallel insertion: ${rowCount.toLocaleString()} records, ${workerCount} workers`);
   
-  // Setup progress reporter
-  const progress = new ProgressReporter({
-    total: rowCount,
-    label: `Inserting ${databaseType}`,
-    showRate: true,
-    showETA: true,
-    updateInterval: 500 // Update every 500ms
-  });
-  
-  // Handle graceful shutdown
-  let shutdownRequested = false;
-  const handleShutdown = () => {
-    if (!shutdownRequested) {
-      shutdownRequested = true;
-      Logger.warn('Shutdown requested. Finishing current operations...');
-      process.stdout.write('\n');
-    }
-  };
-  process.on('SIGINT', handleShutdown);
-  process.on('SIGTERM', handleShutdown);
+  const progress = setupProgressReporter(rowCount, databaseType);
+  const { shutdownRequested, handleShutdown } = setupGracefulShutdown();
   
   try {
     await inserter.initialize();
     Logger.verbose(`Initialized ${workerCount} worker threads`);
     
-    // Use streaming generation approach
-    const startDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000); // 7 days ago
-    const endDate = new Date();
-    const timeRange = endDate.getTime() - startDate.getTime();
+    // Prepare generation context
+    const context = await prepareGenerationContext(seed, rowCount);
     
-    // Pre-generate aircraft pool (small memory footprint)
-    const { DataGenerator } = await import('./generator');
-    const generator = new DataGenerator(seed);
-    const aircraftCount = Math.min(rowCount / 10, 5000);
-    const aircraft = (generator as any).generateAircraft(aircraftCount);
-    Logger.verbose(`Generated ${aircraftCount} unique aircraft profiles with seed: ${seed}`);
+    const processedRecords = await processChunksInParallel(
+      inserter, 
+      context, 
+      rowCount, 
+      databaseType, 
+      batchSize, 
+      workerCount, 
+      startTime, 
+      progress, 
+      shutdownRequested
+    );
     
-    // Process in manageable chunks
-    const chunkSize = Math.min(500000, Math.max(batchSize * workerCount * 2, 100000));
-    const totalChunks = Math.ceil(rowCount / chunkSize);
-    let processedRecords = 0;
-    
-    for (let chunkIndex = 0; chunkIndex < totalChunks && !shutdownRequested; chunkIndex++) {
-      const chunkStart = chunkIndex * chunkSize;
-      const currentChunkSize = Math.min(chunkSize, rowCount - chunkStart);
-      
-      Logger.verbose(`Processing chunk ${chunkIndex + 1}/${totalChunks}: ${currentChunkSize.toLocaleString()} records`);
-      
-      // Generate records for this chunk
-      const records: AircraftTrackingRecord[] = [];
-      for (let i = 0; i < currentChunkSize; i++) {
-        const randomTime = startDate.getTime() + Math.random() * timeRange;
-        const date = new Date(randomTime);
-        const timestamp = databaseType === DATABASE_TYPES.CLICKHOUSE 
-          ? date.toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, '')
-          : date.toISOString();
-        
-        const aircraftData = aircraft[Math.floor(Math.random() * aircraft.length)];
-        const region = (generator as any).regions[Math.floor(Math.random() * (generator as any).regions.length)];
-        
-        const lat = region.latRange[0] + Math.random() * (region.latRange[1] - region.latRange[0]);
-        const lon = region.lonRange[0] + Math.random() * (region.lonRange[1] - region.lonRange[0]);
-        
-        const isCommercial = aircraftData.category.startsWith('A') && !aircraftData.flight.includes('TETON');
-        const altBaro = isCommercial ? 20000 + Math.random() * 20000 : Math.random() * 15000;
-        
-        records.push({
-          zorderCoordinate: Math.floor((lat + 90) * 1000000 + (lon + 180) * 1000),
-          approach: Math.random() < 0.05,
-          autopilot: isCommercial ? Math.random() < 0.8 : Math.random() < 0.3,
-          althold: Math.random() < 0.7,
-          lnav: isCommercial ? Math.random() < 0.6 : Math.random() < 0.2,
-          tcas: isCommercial ? Math.random() < 0.9 : Math.random() < 0.4,
-          hex: aircraftData.hex,
-          transponder_type: '',
-          flight: aircraftData.flight,
-          r: aircraftData.registration,
-          aircraft_type: Math.random() < 0.8 ? (generator as any).generateAircraftType() : null,
-          dbFlags: 1,
-          lat: Math.round(lat * 1000000) / 1000000,
-          lon: Math.round(lon * 1000000) / 1000000,
-          alt_baro: Math.round(altBaro),
-          alt_baro_is_ground: altBaro < 50,
-          alt_geom: Math.round(altBaro + (Math.random() - 0.5) * 200),
-          gs: Math.round(Math.random() * 500 + 100),
-          track: Math.round(Math.random() * 360),
-          baro_rate: Math.round((Math.random() - 0.5) * 4000),
-          geom_rate: Math.random() < 0.9 ? Math.round((Math.random() - 0.5) * 128) : null,
-          squawk: (generator as any).generateSquawk(),
-          emergency: (generator as any).emergencyStates[Math.floor(Math.random() * (generator as any).emergencyStates.length)],
-          category: aircraftData.category,
-          nav_qnh: Math.random() < 0.8 ? Math.max(0, Math.round(1013 + (Math.random() - 0.5) * 50)) : null,
-          nav_altitude_mcp: Math.random() < 0.7 ? Math.max(0, Math.round(altBaro + (Math.random() - 0.5) * 1000)) : null,
-          nav_heading: Math.random() < 0.6 ? Math.round(Math.random() * 360) : null,
-          nav_modes: (generator as any).generateNavModes(),
-          nic: Math.floor(Math.random() * 11),
-          rc: Math.floor(Math.random() * 500),
-          seen_pos: Math.random() * 10,
-          version: Math.random() < 0.9 ? 2 : 1,
-          nic_baro: Math.floor(Math.random() * 2),
-          nac_p: Math.floor(Math.random() * 12),
-          nac_v: Math.floor(Math.random() * 5),
-          sil: Math.floor(Math.random() * 4),
-          sil_type: (generator as any).silTypes[Math.floor(Math.random() * (generator as any).silTypes.length)],
-          gva: Math.floor(Math.random() * 3),
-          sda: Math.floor(Math.random() * 3),
-          alert: 0,
-          spi: 0,
-          mlat: [],
-          tisb: [],
-          messages: Math.floor(Math.random() * 100000),
-          seen: Math.random() * 60,
-          rssi: -5 - Math.random() * 15,
-          timestamp: timestamp
-        });
-      }
-      
-      // Insert chunk in parallel
-      await inserter.insertBatchParallel(records, databaseType, batchSize, true);
-      
-      processedRecords += currentChunkSize;
-      const totalElapsed = Date.now() - startTime;
-      const overallRate = processedRecords / (totalElapsed / 1000);
-      
-      // Update progress bar
-      progress.update(processedRecords, { rate: overallRate });
-      
-      // Memory check every few chunks
-      if ((chunkIndex + 1) % 3 === 0) {
-        const memoryOk = MemoryMonitor.checkMemoryUsage();
-        if (!memoryOk) {
-          Logger.warn('High memory usage detected. Consider reducing batch size.');
-        }
-      }
-    }
-    
-    if (shutdownRequested) {
-      progress.complete(`Cancelled at ${processedRecords.toLocaleString()} records`);
-      Logger.warn('Operation cancelled by user');
-    } else {
-      progress.complete('Complete');
-      Logger.info(`Successfully inserted ${rowCount.toLocaleString()} records`);
-    }
+    finalizParallelInsertion(progress, processedRecords, rowCount, shutdownRequested);
     
   } catch (error) {
     progress.complete('Failed');
@@ -425,6 +305,207 @@ export async function generateAndInsertParallel(
   }
 }
 
+/**
+ * Setup progress reporter for parallel insertion
+ */
+function setupProgressReporter(rowCount: number, databaseType: DatabaseType): ProgressReporter {
+  return new ProgressReporter({
+    total: rowCount,
+    label: `Inserting ${databaseType}`,
+    showRate: true,
+    showETA: true,
+    updateInterval: 500 // Update every 500ms
+  });
+}
+
+/**
+ * Setup graceful shutdown handling
+ */
+function setupGracefulShutdown(): { shutdownRequested: { value: boolean }, handleShutdown: () => void } {
+  const shutdownRequested = { value: false };
+  const handleShutdown = () => {
+    if (!shutdownRequested.value) {
+      shutdownRequested.value = true;
+      Logger.warn('Shutdown requested. Finishing current operations...');
+      process.stdout.write('\n');
+    }
+  };
+  process.on('SIGINT', handleShutdown);
+  process.on('SIGTERM', handleShutdown);
+  
+  return { shutdownRequested, handleShutdown };
+}
+
+/**
+ * Prepare generation context (aircraft pool and time range)
+ */
+async function prepareGenerationContext(seed: string, rowCount: number): Promise<{
+  startDate: Date;
+  timeRange: number;
+  aircraft: any[];
+  generator: any;
+}> {
+  const startDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000); // 7 days ago
+  const endDate = new Date();
+  const timeRange = endDate.getTime() - startDate.getTime();
+  
+  // Pre-generate aircraft pool (small memory footprint)
+  const { DataGenerator } = await import('./generator');
+  const generator = new DataGenerator(seed);
+  const aircraftCount = Math.min(rowCount / 10, 5000);
+  const aircraft = (generator as any).generateAircraft(aircraftCount);
+  Logger.verbose(`Generated ${aircraftCount} unique aircraft profiles with seed: ${seed}`);
+  
+  return { startDate, timeRange, aircraft, generator };
+}
+
+/**
+ * Process chunks in parallel with progress tracking
+ */
+async function processChunksInParallel(
+  inserter: ParallelInserter,
+  context: { startDate: Date; timeRange: number; aircraft: any[]; generator: any },
+  rowCount: number,
+  databaseType: DatabaseType,
+  batchSize: number,
+  workerCount: number,
+  startTime: number,
+  progress: ProgressReporter,
+  shutdownRequested: { value: boolean }
+): Promise<number> {
+  const chunkSize = Math.min(500000, Math.max(batchSize * workerCount * 2, 100000));
+  const totalChunks = Math.ceil(rowCount / chunkSize);
+  let processedRecords = 0;
+  
+  for (let chunkIndex = 0; chunkIndex < totalChunks && !shutdownRequested.value; chunkIndex++) {
+    const chunkStart = chunkIndex * chunkSize;
+    const currentChunkSize = Math.min(chunkSize, rowCount - chunkStart);
+    
+    Logger.verbose(`Processing chunk ${chunkIndex + 1}/${totalChunks}: ${currentChunkSize.toLocaleString()} records`);
+    
+    const records = generateChunkRecords(currentChunkSize, context, databaseType);
+    
+    // Insert chunk in parallel
+    await inserter.insertBatchParallel(records, databaseType, batchSize, true);
+    
+    processedRecords += currentChunkSize;
+    const totalElapsed = Date.now() - startTime;
+    const overallRate = processedRecords / (totalElapsed / 1000);
+    
+    // Update progress bar
+    progress.update(processedRecords, { rate: overallRate });
+    
+    // Memory check every few chunks
+    if ((chunkIndex + 1) % 3 === 0) {
+      const memoryOk = MemoryMonitor.checkMemoryUsage();
+      if (!memoryOk) {
+        Logger.warn('High memory usage detected. Consider reducing batch size.');
+      }
+    }
+  }
+  
+  return processedRecords;
+}
+
+/**
+ * Generate records for a single chunk
+ */
+function generateChunkRecords(
+  currentChunkSize: number,
+  context: { startDate: Date; timeRange: number; aircraft: any[]; generator: any },
+  databaseType: DatabaseType
+): AircraftTrackingRecord[] {
+  const records: AircraftTrackingRecord[] = [];
+  const { startDate, timeRange, aircraft, generator } = context;
+  
+  for (let i = 0; i < currentChunkSize; i++) {
+    const randomTime = startDate.getTime() + Math.random() * timeRange;
+    const date = new Date(randomTime);
+    const timestamp = databaseType === DATABASE_TYPES.CLICKHOUSE 
+      ? date.toISOString().replace('T', ' ').replace(/\\.\\d{3}Z$/, '')
+      : date.toISOString();
+    
+    const aircraftData = aircraft[Math.floor(Math.random() * aircraft.length)];
+    const region = (generator as any).regions[Math.floor(Math.random() * (generator as any).regions.length)];
+    
+    const lat = region.latRange[0] + Math.random() * (region.latRange[1] - region.latRange[0]);
+    const lon = region.lonRange[0] + Math.random() * (region.lonRange[1] - region.lonRange[0]);
+    
+    const isCommercial = aircraftData.category.startsWith('A') && !aircraftData.flight.includes('TETON');
+    const altBaro = isCommercial ? 20000 + Math.random() * 20000 : Math.random() * 15000;
+    
+    records.push({
+      zorderCoordinate: Math.floor((lat + 90) * 1000000 + (lon + 180) * 1000),
+      approach: Math.random() < 0.05,
+      autopilot: isCommercial ? Math.random() < 0.8 : Math.random() < 0.3,
+      althold: Math.random() < 0.7,
+      lnav: isCommercial ? Math.random() < 0.6 : Math.random() < 0.2,
+      tcas: isCommercial ? Math.random() < 0.9 : Math.random() < 0.4,
+      hex: aircraftData.hex,
+      transponder_type: '',
+      flight: aircraftData.flight,
+      r: aircraftData.registration,
+      aircraft_type: Math.random() < 0.8 ? (generator as any).generateAircraftType() : null,
+      dbFlags: 1,
+      lat: Math.round(lat * 1000000) / 1000000,
+      lon: Math.round(lon * 1000000) / 1000000,
+      alt_baro: Math.round(altBaro),
+      alt_baro_is_ground: altBaro < 50,
+      alt_geom: Math.round(altBaro + (Math.random() - 0.5) * 200),
+      gs: Math.round(Math.random() * 500 + 100),
+      track: Math.round(Math.random() * 360),
+      baro_rate: Math.round((Math.random() - 0.5) * 4000),
+      geom_rate: Math.random() < 0.9 ? Math.round((Math.random() - 0.5) * 128) : null,
+      squawk: (generator as any).generateSquawk(),
+      emergency: (generator as any).emergencyStates[Math.floor(Math.random() * (generator as any).emergencyStates.length)],
+      category: aircraftData.category,
+      nav_qnh: Math.random() < 0.8 ? Math.max(0, Math.round(1013 + (Math.random() - 0.5) * 50)) : null,
+      nav_altitude_mcp: Math.random() < 0.7 ? Math.max(0, Math.round(altBaro + (Math.random() - 0.5) * 1000)) : null,
+      nav_heading: Math.random() < 0.6 ? Math.round(Math.random() * 360) : null,
+      nav_modes: (generator as any).generateNavModes(),
+      nic: Math.floor(Math.random() * 11),
+      rc: Math.floor(Math.random() * 500),
+      seen_pos: Math.random() * 10,
+      version: Math.random() < 0.9 ? 2 : 1,
+      nic_baro: Math.floor(Math.random() * 2),
+      nac_p: Math.floor(Math.random() * 12),
+      nac_v: Math.floor(Math.random() * 5),
+      sil: Math.floor(Math.random() * 4),
+      sil_type: (generator as any).silTypes[Math.floor(Math.random() * (generator as any).silTypes.length)],
+      gva: Math.floor(Math.random() * 3),
+      sda: Math.floor(Math.random() * 3),
+      alert: 0,
+      spi: 0,
+      mlat: [],
+      tisb: [],
+      messages: Math.floor(Math.random() * 100000),
+      seen: Math.random() * 60,
+      rssi: -5 - Math.random() * 15,
+      timestamp: timestamp
+    });
+  }
+  
+  return records;
+}
+
+/**
+ * Finalize parallel insertion with completion status
+ */
+function finalizParallelInsertion(
+  progress: ProgressReporter,
+  processedRecords: number,
+  rowCount: number,
+  shutdownRequested: { value: boolean }
+): void {
+  if (shutdownRequested.value) {
+    progress.complete(`Cancelled at ${processedRecords.toLocaleString()} records`);
+    Logger.warn('Operation cancelled by user');
+  } else {
+    progress.complete('Complete');
+    Logger.info(`Successfully inserted ${rowCount.toLocaleString()} records`);
+  }
+}
+
 // Multi-database sequential insertion with individual progress bars
 export async function generateAndInsertSequentialWithMultiBar(
   databases: { database: any; databaseType: DatabaseType; withIndex?: boolean }[],
@@ -432,160 +513,32 @@ export async function generateAndInsertSequentialWithMultiBar(
   batchSize: number = 50000,
   workerCount: number = 4
 ): Promise<void> {
-  const cliProgress = await import('cli-progress');
-  
   Logger.info(`Multi-DB sequential insertion: ${rowCount.toLocaleString()} records (batch size: ${batchSize.toLocaleString()})`);
   
-  // Helper function to format time in mm:ss
-  const formatTime = (seconds: number): string => {
-    if (seconds < 60) return `${Math.round(seconds)}s`;
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = Math.round(seconds % 60);
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
-  };
-
-  // Display names for each database
-  const displayNames = databases.map(({ databaseType, withIndex }) => {
-    return getDatabaseDisplayName(databaseType, withIndex);
-  });
-
-  // Handle graceful shutdown
-  let shutdownRequested = false;
-  const handleShutdown = () => {
-    if (!shutdownRequested) {
-      shutdownRequested = true;
-      Logger.warn('Shutdown requested. Finishing current operations...');
-    }
-  };
-  process.on('SIGINT', handleShutdown);
-  process.on('SIGTERM', handleShutdown);
-
+  const displayNames = databases.map(({ databaseType, withIndex }) => getDatabaseDisplayName(databaseType, withIndex));
+  const { shutdownRequested, handleShutdown } = setupMultiDBShutdownHandling();
   const completionTimes: number[] = [];
   const finalBars: string[] = [];
 
   try {
-    // Pre-generate aircraft pool (once for all databases)
-    const { DataGenerator } = await import('./generator');
-    const generator = new DataGenerator();
-    const aircraftCount = Math.min(rowCount / 10, 5000);
-    const aircraft = (generator as any).generateAircraft(aircraftCount);
+    const context = await prepareMultiDBContext();
+    await initializeDatabases(databases);
     
-    const startDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    const endDate = new Date();
-    const timeRange = endDate.getTime() - startDate.getTime();
-
-    // Initialize databases once before any workers are created
-    console.log('Initializing databases...');
-    
-    // Create databases first (once only)
-    const seenDatabases = new Set();
-    for (let dbIndex = 0; dbIndex < databases.length; dbIndex++) {
-      const { database, databaseType } = databases[dbIndex];
-      
-      if (!seenDatabases.has(databaseType)) {
-        await database.ensureDatabaseExists();
-        seenDatabases.add(databaseType);
-      }
-    }
-    
-    // Then connect and set up tables
-    for (let dbIndex = 0; dbIndex < databases.length; dbIndex++) {
-      const { database } = databases[dbIndex];
-      
-      await database.connect();
-      
-      // Tables are already set up by the performance tester
-    }
-    console.log('Database setup complete');
-
     console.log(); // Add spacing before progress bars
 
-    // Insert into each database sequentially with individual progress bars
-    for (let dbIndex = 0; dbIndex < databases.length && !shutdownRequested; dbIndex++) {
-      const { database, databaseType, withIndex } = databases[dbIndex];
-      const inserter = new ParallelInserter(workerCount);
-      
-      // Extract database configuration for worker threads
-      const dbConfig = databaseType === DATABASE_TYPES.POSTGRESQL && (database as any).dbConfig ? (database as any).dbConfig : undefined;
-      
-      // Create individual progress bar for this database
-      const progressBar = new cliProgress.SingleBar({
-        format: `${displayNames[dbIndex].padEnd(15)}: [{bar}] {percentage}% | {value}/{total} | {rate}/sec | {duration_formatted} | ETA: {eta_formatted}`,
-        barCompleteChar: '█',
-        barIncompleteChar: '░',
-        hideCursor: true,
-        clearOnComplete: false,
-        stopOnComplete: false,
-        barsize: 30
-      }, cliProgress.Presets.shades_classic);
-
-      progressBar.start(rowCount, 0, {
-        rate: '0',
-        duration_formatted: '0:00',
-        eta_formatted: 'N/A'
-      });
-
-      const startTime = Date.now();
-      await inserter.initialize();
-      
-      // Process in chunks for this database
-      const chunkSize = Math.min(500000, Math.max(batchSize * workerCount * 2, 100000));
-      const totalChunks = Math.ceil(rowCount / chunkSize);
-      let processedRecords = 0;
-      
-      for (let chunkIndex = 0; chunkIndex < totalChunks && !shutdownRequested; chunkIndex++) {
-        const currentChunkSize = Math.min(chunkSize, rowCount - (chunkIndex * chunkSize));
-        
-        const chunkRecords = generateRecordsForChunk(currentChunkSize, startDate, timeRange, aircraft, generator);
-        await inserter.insertBatchParallel(chunkRecords, databaseType, batchSize, true, dbConfig);
-        
-        processedRecords += currentChunkSize;
-        const elapsed = Date.now() - startTime;
-        const rate = processedRecords / (elapsed / 1000);
-        const eta = processedRecords > 0 && processedRecords < rowCount
-          ? (rowCount - processedRecords) / rate
-          : 0;
-          
-        progressBar.update(processedRecords, {
-          rate: formatNumber(Math.round(rate)),
-          duration_formatted: formatTime(elapsed / 1000),
-          eta_formatted: formatTime(eta)
-        });
-      }
-      
-      completionTimes[dbIndex] = Date.now() - startTime;
-      
-      // Final update
-      const finalRate = rowCount / (completionTimes[dbIndex] / 1000);
-      progressBar.update(rowCount, {
-        rate: formatNumber(Math.round(finalRate)),
-        duration_formatted: formatTime(completionTimes[dbIndex] / 1000),
-        eta_formatted: '0:00'
-      });
-      
-      progressBar.stop();
-      await inserter.cleanup();
-
-      // Store the final bar representation for display at end
-      const finalBar = `${displayNames[dbIndex].padEnd(15)}: [${'█'.repeat(30)}] 100% | ${rowCount.toLocaleString()}/${rowCount.toLocaleString()} | ${formatNumber(Math.round(finalRate))}/sec | ${formatTime(completionTimes[dbIndex] / 1000)} | ETA: 0:00`;
-      finalBars.push(finalBar);
-    }
-    
-    if (shutdownRequested) {
-      console.log('\nOperation cancelled by user');
-      return;
-    }
-
-    // Show all final bars together
-    console.log('\nFinal Results:');
-    finalBars.forEach(bar => console.log(bar));
-
-    // Summary
-    console.log(`\nSuccessfully inserted ${rowCount.toLocaleString()} records into ${databases.length} database configurations`);
-    const summaryParts = displayNames.map((name, index) => 
-      completionTimes[index] ? `${name}: ${formatTime(completionTimes[index] / 1000)}` : `${name}: incomplete`
+    await processAllDatabasesSequentially(
+      databases, 
+      displayNames, 
+      context, 
+      rowCount, 
+      batchSize, 
+      workerCount, 
+      shutdownRequested, 
+      completionTimes, 
+      finalBars
     );
-    console.log(`  ${summaryParts.join('   ')}`);
+    
+    displayFinalResults(shutdownRequested, finalBars, rowCount, databases.length, displayNames, completionTimes);
 
   } catch (error) {
     console.error(`Multi-database insertion failed: ${error instanceof Error ? error.message : String(error)}`);
@@ -596,6 +549,242 @@ export async function generateAndInsertSequentialWithMultiBar(
   }
 }
 
+/**
+ * Setup shutdown handling for multi-database operations
+ */
+function setupMultiDBShutdownHandling(): { shutdownRequested: { value: boolean }, handleShutdown: () => void } {
+  const shutdownRequested = { value: false };
+  const handleShutdown = () => {
+    if (!shutdownRequested.value) {
+      shutdownRequested.value = true;
+      Logger.warn('Shutdown requested. Finishing current operations...');
+    }
+  };
+  process.on('SIGINT', handleShutdown);
+  process.on('SIGTERM', handleShutdown);
+  
+  return { shutdownRequested, handleShutdown };
+}
+
+/**
+ * Prepare context for multi-database generation
+ */
+async function prepareMultiDBContext(): Promise<{
+  startDate: Date;
+  timeRange: number;
+  aircraft: any[];
+  generator: any;
+}> {
+  const { DataGenerator } = await import('./generator');
+  const generator = new DataGenerator();
+  const aircraftCount = Math.min(10000 / 10, 5000); // Use a reasonable default
+  const aircraft = (generator as any).generateAircraft(aircraftCount);
+  
+  const startDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const endDate = new Date();
+  const timeRange = endDate.getTime() - startDate.getTime();
+  
+  return { startDate, timeRange, aircraft, generator };
+}
+
+/**
+ * Initialize all databases before processing
+ */
+async function initializeDatabases(databases: { database: any; databaseType: DatabaseType; withIndex?: boolean }[]): Promise<void> {
+  console.log('Initializing databases...');
+  
+  // Create databases first (once only)
+  const seenDatabases = new Set();
+  for (let dbIndex = 0; dbIndex < databases.length; dbIndex++) {
+    const { database, databaseType } = databases[dbIndex];
+    
+    if (!seenDatabases.has(databaseType)) {
+      await database.ensureDatabaseExists();
+      seenDatabases.add(databaseType);
+    }
+  }
+  
+  // Then connect and set up tables
+  for (let dbIndex = 0; dbIndex < databases.length; dbIndex++) {
+    const { database } = databases[dbIndex];
+    await database.connect();
+  }
+  console.log('Database setup complete');
+}
+
+/**
+ * Process all databases sequentially with progress tracking
+ */
+async function processAllDatabasesSequentially(
+  databases: { database: any; databaseType: DatabaseType; withIndex?: boolean }[],
+  displayNames: string[],
+  context: { startDate: Date; timeRange: number; aircraft: any[]; generator: any },
+  rowCount: number,
+  batchSize: number,
+  workerCount: number,
+  shutdownRequested: { value: boolean },
+  completionTimes: number[],
+  finalBars: string[]
+): Promise<void> {
+  const cliProgress = await import('cli-progress');
+  
+  for (let dbIndex = 0; dbIndex < databases.length && !shutdownRequested.value; dbIndex++) {
+    const { database, databaseType } = databases[dbIndex];
+    const inserter = new ParallelInserter(workerCount);
+    
+    // Extract database configuration for worker threads
+    const dbConfig = databaseType === DATABASE_TYPES.POSTGRESQL && (database as any).dbConfig ? (database as any).dbConfig : undefined;
+    
+    const progressBar = createProgressBar(cliProgress, displayNames[dbIndex], rowCount);
+    const startTime = Date.now();
+    
+    await inserter.initialize();
+    
+    await processSingleDatabaseInChunks(
+      inserter, 
+      context, 
+      rowCount, 
+      databaseType, 
+      batchSize, 
+      workerCount, 
+      dbConfig, 
+      shutdownRequested, 
+      progressBar, 
+      startTime
+    );
+    
+    completionTimes[dbIndex] = Date.now() - startTime;
+    finalizeProgressBar(progressBar, rowCount, completionTimes[dbIndex]);
+    
+    await inserter.cleanup();
+
+    // Store the final bar representation for display at end
+    const finalRate = rowCount / (completionTimes[dbIndex] / 1000);
+    const finalBar = `${displayNames[dbIndex].padEnd(15)}: [${'█'.repeat(30)}] 100% | ${rowCount.toLocaleString()}/${rowCount.toLocaleString()} | ${formatNumber(Math.round(finalRate))}/sec | ${formatTimeInMinSec(completionTimes[dbIndex] / 1000)} | ETA: 0:00`;
+    finalBars.push(finalBar);
+  }
+}
+
+/**
+ * Create progress bar for a database
+ */
+function createProgressBar(cliProgress: any, dbName: string, rowCount: number): any {
+  const progressBar = new cliProgress.SingleBar({
+    format: `${dbName.padEnd(15)}: [{bar}] {percentage}% | {value}/{total} | {rate}/sec | {duration_formatted} | ETA: {eta_formatted}`,
+    barCompleteChar: '█',
+    barIncompleteChar: '░',
+    hideCursor: true,
+    clearOnComplete: false,
+    stopOnComplete: false,
+    barsize: 30
+  }, cliProgress.Presets.shades_classic);
+
+  progressBar.start(rowCount, 0, {
+    rate: '0',
+    duration_formatted: '0:00',
+    eta_formatted: 'N/A'
+  });
+  
+  return progressBar;
+}
+
+/**
+ * Process a single database in chunks
+ */
+async function processSingleDatabaseInChunks(
+  inserter: ParallelInserter,
+  context: { startDate: Date; timeRange: number; aircraft: any[]; generator: any },
+  rowCount: number,
+  databaseType: DatabaseType,
+  batchSize: number,
+  workerCount: number,
+  dbConfig: any,
+  shutdownRequested: { value: boolean },
+  progressBar: any,
+  startTime: number
+): Promise<void> {
+  const chunkSize = Math.min(500000, Math.max(batchSize * workerCount * 2, 100000));
+  const totalChunks = Math.ceil(rowCount / chunkSize);
+  let processedRecords = 0;
+  
+  for (let chunkIndex = 0; chunkIndex < totalChunks && !shutdownRequested.value; chunkIndex++) {
+    const currentChunkSize = Math.min(chunkSize, rowCount - (chunkIndex * chunkSize));
+    
+    const chunkRecords = generateRecordsForChunk(currentChunkSize, context.startDate, context.timeRange, context.aircraft, context.generator);
+    await inserter.insertBatchParallel(chunkRecords, databaseType, batchSize, true, dbConfig);
+    
+    processedRecords += currentChunkSize;
+    updateProgressBar(progressBar, processedRecords, rowCount, startTime);
+  }
+}
+
+/**
+ * Update progress bar with current status
+ */
+function updateProgressBar(progressBar: any, processedRecords: number, rowCount: number, startTime: number): void {
+  const elapsed = Date.now() - startTime;
+  const rate = processedRecords / (elapsed / 1000);
+  const eta = processedRecords > 0 && processedRecords < rowCount
+    ? (rowCount - processedRecords) / rate
+    : 0;
+    
+  progressBar.update(processedRecords, {
+    rate: formatNumber(Math.round(rate)),
+    duration_formatted: formatTimeInMinSec(elapsed / 1000),
+    eta_formatted: formatTimeInMinSec(eta)
+  });
+}
+
+/**
+ * Finalize progress bar with final status
+ */
+function finalizeProgressBar(progressBar: any, rowCount: number, completionTimeMs: number): void {
+  const finalRate = rowCount / (completionTimeMs / 1000);
+  progressBar.update(rowCount, {
+    rate: formatNumber(Math.round(finalRate)),
+    duration_formatted: formatTimeInMinSec(completionTimeMs / 1000),
+    eta_formatted: '0:00'
+  });
+  progressBar.stop();
+}
+
+/**
+ * Display final results summary
+ */
+function displayFinalResults(
+  shutdownRequested: { value: boolean },
+  finalBars: string[],
+  rowCount: number,
+  databaseCount: number,
+  displayNames: string[],
+  completionTimes: number[]
+): void {
+  if (shutdownRequested.value) {
+    console.log('\nOperation cancelled by user');
+    return;
+  }
+
+  // Show all final bars together
+  console.log('\nFinal Results:');
+  finalBars.forEach(bar => console.log(bar));
+
+  // Summary
+  console.log(`\nSuccessfully inserted ${rowCount.toLocaleString()} records into ${databaseCount} database configurations`);
+  const summaryParts = displayNames.map((name, index) => 
+    completionTimes[index] ? `${name}: ${formatTimeInMinSec(completionTimes[index] / 1000)}` : `${name}: incomplete`
+  );
+  console.log(`  ${summaryParts.join('   ')}`);
+}
+
+/**
+ * Format time in mm:ss format
+ */
+function formatTimeInMinSec(seconds: number): string {
+  if (seconds < 60) return `${Math.round(seconds)}s`;
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = Math.round(seconds % 60);
+  return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+}
 
 // Helper function to generate records for a chunk
 function generateRecordsForChunk(
