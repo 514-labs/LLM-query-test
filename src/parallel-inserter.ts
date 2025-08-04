@@ -263,7 +263,8 @@ export async function generateAndInsertParallel(
   rowCount: number,
   databaseType: 'clickhouse' | 'postgresql',
   batchSize: number = 50000,
-  workerCount: number = 4
+  workerCount: number = 4,
+  seed: string = 'default-benchmark-seed'
 ): Promise<void> {
   const inserter = new ParallelInserter(workerCount);
   const startTime = Date.now();
@@ -302,10 +303,10 @@ export async function generateAndInsertParallel(
     
     // Pre-generate aircraft pool (small memory footprint)
     const { DataGenerator } = await import('./data-generator');
-    const generator = new DataGenerator();
+    const generator = new DataGenerator(seed);
     const aircraftCount = Math.min(rowCount / 10, 5000);
     const aircraft = (generator as any).generateAircraft(aircraftCount);
-    Logger.verbose(`Generated ${aircraftCount} unique aircraft profiles`);
+    Logger.verbose(`Generated ${aircraftCount} unique aircraft profiles with seed: ${seed}`);
     
     // Process in manageable chunks
     const chunkSize = Math.min(500000, Math.max(batchSize * workerCount * 2, 100000));
