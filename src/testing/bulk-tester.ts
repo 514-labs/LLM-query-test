@@ -1,10 +1,41 @@
 import dotenv from 'dotenv';
+import { Command } from 'commander';
 import { spawn, execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as readline from 'readline';
 
 dotenv.config();
+
+// Configure CLI with Commander.js
+const program = new Command();
+
+program
+  .name('npm run bulk-test')
+  .description('Comprehensive bulk testing across multiple dataset sizes')
+  .version('1.0.0')
+  .option('-s, --sizes <sizes>', 'comma-separated dataset sizes (e.g., "1000,10000,100000")')
+  .option('-t, --time-limit <minutes>', 'time limit in minutes for each query test')
+  .option('-o, --output-dir <dir>', 'output directory for results')
+  .addHelpText('after', `
+
+Configuration:
+  Configuration is read from .env file first, then overridden by CLI flags.
+  
+  Environment variables:
+    BULK_TEST_SIZES - comma-separated dataset sizes
+    BULK_TEST_TIME_LIMIT - time limit in minutes  
+    BULK_TEST_OUTPUT_DIR - output directory
+
+  Examples:
+    npm run bulk-test                                      # Use .env configuration
+    npm run bulk-test -- --sizes "1000,10000,100000"     # Override dataset sizes
+    npm run bulk-test -- --time-limit 30                  # Override time limit
+`);
+
+// Parse CLI arguments
+program.parse();
+const options = program.opts();
 
 // ASCII Art Banner
 function showBanner() {
@@ -52,28 +83,28 @@ class BulkTester {
   private sessionFile: string;
 
   constructor() {
-    // Parse sizes from environment or use defaults
-    const defaultSizes = [5000, 10000, 50000, 100000, 500000, 1000000, 5000000, 10000000, 25000000];
-    const envSizes = process.env.BULK_TEST_SIZES;
-    
+    // Get configuration from .env first, then override with CLI options
+    const envSizes = process.env.BULK_TEST_SIZES || '5000,10000,50000,100000,500000,1000000,5000000,10000000,25000000';
+    const envTimeLimit = process.env.BULK_TEST_TIME_LIMIT || '60';
+    const envOutputDir = process.env.BULK_TEST_OUTPUT_DIR || 'output';
+
+    // Parse sizes (CLI overrides .env)
     let sizes: number[];
-    if (envSizes) {
-      try {
-        // Handle both array format [1,2,3] and comma-separated 1,2,3
-        const cleanedSizes = envSizes.replace(/[\[\]]/g, '');
-        sizes = cleanedSizes.split(',').map(s => parseInt(s.trim()));
-      } catch (error) {
-        console.warn('⚠️  Invalid BULK_TEST_SIZES format, using defaults');
-        sizes = defaultSizes;
+    const sizesInput = options.sizes || envSizes;
+    try {
+      sizes = sizesInput.split(',').map((s: string) => parseInt(s.trim()));
+      if (sizes.some(isNaN)) {
+        throw new Error('Invalid number in sizes');
       }
-    } else {
-      sizes = defaultSizes;
+    } catch (error) {
+      console.warn('⚠️  Invalid sizes format, using defaults');
+      sizes = [5000, 10000, 50000, 100000, 500000, 1000000, 5000000, 10000000, 25000000];
     }
 
     this.config = {
       sizes: sizes.sort((a, b) => a - b), // Sort ascending
-      timeLimit: 60, // 1 hour
-      outputDir: 'output'
+      timeLimit: parseInt(options.timeLimit || envTimeLimit),
+      outputDir: options.outputDir || envOutputDir
     };
 
     // Ensure output directory exists
@@ -325,7 +356,7 @@ class BulkTester {
 
   private async generateGraphs(): Promise<void> {
     console.log('\x1b[36mGenerating performance graphs...\x1b[0m');
-    const result = await this.runCommand('npm', ['run', 'graphs'], true); // Filter verbose output
+    const result = await this.runCommand('npm', ['run', 'generate-graphs'], true); // Filter verbose output
     
     if (result.success) {
       console.log('\x1b[32mGraphs generated\x1b[0m');

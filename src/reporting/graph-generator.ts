@@ -1,19 +1,8 @@
 #!/usr/bin/env node
 import * as fs from 'fs';
 import * as path from 'path';
+import { Command } from 'commander';
 import { TestResults } from '../testing/performance-tester';
-
-// Graph generation CLI (merged from generate-graphs.ts)
-function runGraphsCLI(): void {
-  const args = process.argv.slice(2);
-  const updateResults = args.includes('--update-readme'); // Keep legacy flag for compatibility
-
-  if (updateResults) {
-    console.log('🔄 RESULTS.md update mode enabled');
-  }
-
-  ASCIIGraphGenerator.generateGraphs(updateResults);
-}
 
 export class ASCIIGraphGenerator {
   private static readonly OUTPUT_DIR = path.join(process.cwd(), 'output');
@@ -787,7 +776,7 @@ export class ASCIIGraphGenerator {
       content += '**To generate results:**\n';
       content += '1. `npm start` - Run load test\n';
       content += '2. `npm run query-test` - Run statistical test\n';
-      content += '3. `npm run graphs --update-readme` - Update this section\n';
+      content += '3. `npm run generate-graphs -- --update-readme` - Update this section\n';
       return content;
     }
 
@@ -796,7 +785,7 @@ export class ASCIIGraphGenerator {
     
     content += '\n#### View Detailed Results\n\n';
     content += '```bash\n';
-    content += 'npm run graphs  # Interactive terminal graphs\n';
+    content += 'npm run generate-graphs  # Interactive terminal graphs\n';
     content += '```\n\n';
     content += `**Result Files**: Check \`output/\` directory for detailed JSON and CSV results.\n`;
 
@@ -982,7 +971,27 @@ export class ASCIIGraphGenerator {
   }
 }
 
-// CLI entry point
+// Configure CLI with Commander.js
 if (require.main === module) {
-  runGraphsCLI();
+  const program = new Command();
+  
+  program
+    .name('npm run generate-graphs')
+    .description('Generate ASCII performance graphs from test results')
+    .version('1.0.0')
+    .option('--update-readme', 'update RESULTS.md with generated graphs', false)
+    .addHelpText('after', `
+
+Examples:
+  npm run generate-graphs                        # Generate graphs to console
+  npm run generate-graphs -- --update-readme    # Generate graphs and update RESULTS.md
+`)
+    .action((options) => {
+      if (options.updateReadme) {
+        console.log('🔄 RESULTS.md update mode enabled');
+      }
+      ASCIIGraphGenerator.generateGraphs(options.updateReadme);
+    });
+
+  program.parse();
 }

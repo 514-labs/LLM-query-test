@@ -1,9 +1,41 @@
 #!/usr/bin/env node
 import dotenv from 'dotenv';
+import { Command } from 'commander';
 import { execSync } from 'child_process';
 import { ConfigValidator } from '../config/validator';
 
 dotenv.config();
+
+// Configure CLI with Commander.js
+const program = new Command();
+
+program
+  .name('npm run start-dbs')
+  .description('Start ClickHouse and PostgreSQL database containers for performance testing')
+  .version('1.0.0')
+  .option('--cleanup-first', 'cleanup existing containers before starting', false)
+  .addHelpText('after', `
+
+This tool starts the required database containers:
+  • ClickHouse on port 8123
+  • PostgreSQL (no indexes) on port 5432  
+  • PostgreSQL (with indexes) on port 5433
+
+Configuration is read from .env file:
+  Environment variables:
+    CLICKHOUSE_MEMORY/CPUS - ClickHouse container resources
+    POSTGRES_MEMORY/CPUS - PostgreSQL container resources  
+    POSTGRES_INDEXED_MEMORY/CPUS - PostgreSQL (indexed) container resources
+    POSTGRES_PORT/POSTGRES_INDEXED_PORT - Custom port assignments
+
+Examples:
+  npm run start-dbs                    # Start with existing containers
+  npm run start-dbs -- --cleanup-first # Remove existing containers first
+`);
+
+// Parse CLI arguments
+program.parse();
+const options = program.opts();
 
 // Validate environment variables early
 const validator = new ConfigValidator();
@@ -127,11 +159,13 @@ class DatabaseStarter {
     const configs = this.getContainerConfigs();
 
     try {
-      // Stop and remove existing containers
-      await this.executeCommand(
-        'docker rm -f clickhouse-server postgres postgres-indexed 2>/dev/null || true',
-        'Cleaning up existing containers'
-      );
+      // Optionally stop and remove existing containers
+      if (options.cleanupFirst) {
+        await this.executeCommand(
+          'docker rm -f clickhouse-server postgres postgres-indexed 2>/dev/null || true',
+          'Cleaning up existing containers'
+        );
+      }
 
       // Start each container
       for (const config of configs) {

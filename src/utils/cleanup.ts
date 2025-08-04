@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 import * as fs from 'fs';
 import * as path from 'path';
+import { Command } from 'commander';
 import { ClickHouseDatabase } from '../database/clickhouse';
 import { PostgreSQLDatabase } from '../database/postgresql';
-import { config } from '../index';
+import { config } from '../config/config';
 
 const OUTPUT_DIR = path.join(process.cwd(), 'output');
 
@@ -156,13 +157,35 @@ export function clearOutputOnly(): void {
   }
 }
 
-// Handle command line arguments
-const args = process.argv.slice(2);
+// Configure CLI with Commander.js
+if (require.main === module) {
+  const program = new Command();
+  
+  program
+    .name('npm run clean')
+    .description('Database and output file cleanup utility')
+    .version('1.0.0');
 
-if (args.includes('--db-only')) {
-  clearDatabasesOnly();
-} else if (args.includes('--output-only')) {
-  clearOutputOnly();
-} else {
-  cleanup();
+  program
+    .command('all', { isDefault: true })
+    .description('clean both database tables and output files')
+    .action(() => {
+      cleanup();
+    });
+
+  program
+    .command('db')
+    .description('clean database tables only')
+    .action(() => {
+      clearDatabasesOnly();
+    });
+
+  program
+    .command('output')
+    .description('clean output files only')
+    .action(() => {
+      clearOutputOnly();
+    });
+
+  program.parse();
 }

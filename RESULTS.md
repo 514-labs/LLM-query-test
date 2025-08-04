@@ -77,8 +77,8 @@ All query test results include:
 Generate interactive performance graphs:
 
 ```bash
-npm run graphs                    # Terminal display
-npm run graphs -- --update-readme # Update this file with latest results
+npm run generate-graphs                    # Terminal display
+npm run generate-graphs -- --update-readme # Update this file with latest results
 ```
 
 ## Raw Data

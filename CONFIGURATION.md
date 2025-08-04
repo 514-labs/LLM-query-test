@@ -58,11 +58,15 @@ POSTGRES_INDEXED_CPUS=2
 
 ### Performance Testing
 
+**Single Test Configuration:**
 ```env
 # Dataset configuration
-DATASET_SIZE=10000000          # Default 10M rows
+DATASET_SIZE=10000000          # Default 10M rows for single tests
 BATCH_SIZE=50000              # Records per batch for insertion
-BULK_TEST_SIZES=10K,50K,100K,500K,1M,5M,10M,25M  # Sizes for bulk testing
+
+# Query test configuration  
+QUERY_TEST_ITERATIONS=100      # Number of iterations for query-only tests
+QUERY_TEST_TIME_LIMIT=60       # Time limit in minutes for single query tests
 
 # Parallel processing
 PARALLEL_INSERT=true          # Enable parallel data insertion
@@ -73,18 +77,46 @@ WORKER_TIMEOUT_MS=300000      # Worker timeout (5 minutes)
 BENCHMARK_SEED=default-benchmark-seed  # Seed for reproducible data generation
 ```
 
+**Bulk Test Configuration:**
+```env
+# Bulk testing dataset sizes
+BULK_TEST_SIZES=5000,10000,50000,100000,500000,1000000,5000000,10000000,25000000
+
+# Bulk test timing
+BULK_TEST_TIME_LIMIT=60        # Time limit in minutes for each bulk query test
+BULK_TEST_OUTPUT_DIR=output    # Output directory for bulk test results
+```
+
 ## Advanced Features
+
+### CLI Overrides
+
+All configuration can be overridden via CLI flags:
+
+**Single Tests:**
+```bash
+npm start                                    # Use .env configuration
+npm run query-test                           # Use .env configuration  
+npm run query-test -- --iterations 200      # Override iterations only
+npm run query-test -- --time-limit 120      # Override time limit only
+npm start -- --query-only --iterations 50   # Multiple overrides
+```
+
+**Bulk Tests:**
+```bash
+npm run bulk-test                                    # Use .env configuration
+npm run bulk-test -- --sizes "1000,10000,100000"   # Override dataset sizes
+npm run bulk-test -- --time-limit 30                # Override time limit
+npm run bulk-test -- --output-dir my-results        # Override output directory
+```
 
 ### Time Limits
 
-Query-only tests include automatic timeout protection:
-
-```bash
-npm run query-test                     # Default: 60 minutes per test configuration
-npm run query-test -- --time-limit=120 # Custom: 120 minutes per test configuration
-```
+Query tests include automatic timeout protection:
 
 - Each database/index combination gets its own time limit
+- Default: 60 minutes per test configuration (configurable via `QUERY_TEST_TIME_LIMIT`)
+- CLI override: `--time-limit=120` for custom limits
 - Partial results are saved if tests timeout
 - Tests can be safely interrupted and resumed
 
