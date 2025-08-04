@@ -85,12 +85,16 @@ export class DataGenerator {
       const randomTime = startDate.getTime() + Math.random() * timeRange;
       const date = new Date(randomTime);
       
-      // Format timestamp based on database type
+      // Use consistent timestamp format for both databases
+      // Both databases should receive the same logical time values
       let timestamp: string;
       if (database === 'clickhouse') {
+        // ClickHouse DateTime format: 'YYYY-MM-DD HH:MM:SS' (no timezone, interpreted as local)
         timestamp = date.toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, '');
       } else {
-        timestamp = date.toISOString();
+        // PostgreSQL TIMESTAMP format: 'YYYY-MM-DD HH:MM:SS' (no timezone for consistency)
+        // This ensures both databases interpret the same logical time
+        timestamp = date.toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, '');
       }
 
       // Pick a random aircraft and generate realistic tracking data
@@ -256,11 +260,15 @@ export class DataGenerator {
         const randomTime = startDate.getTime() + Math.random() * timeRange;
         const date = new Date(randomTime);
         
+        // Use consistent timestamp format for both databases
         let timestamp: string;
         if (databaseType === 'clickhouse') {
+          // ClickHouse DateTime format: 'YYYY-MM-DD HH:MM:SS' (no timezone, interpreted as local)
           timestamp = date.toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, '');
         } else {
-          timestamp = date.toISOString();
+          // PostgreSQL TIMESTAMP format: 'YYYY-MM-DD HH:MM:SS' (no timezone for consistency)
+          // This ensures both databases interpret the same logical time
+          timestamp = date.toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, '');
         }
 
         const aircraftData = aircraft[Math.floor(Math.random() * aircraft.length)];

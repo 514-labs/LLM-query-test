@@ -29,13 +29,19 @@ export class TestQueries {
       q2_explore_schema: {
         name: 'Q2 Explore schema with sample data',
         clickhouse: `
-          SELECT *
+          SELECT 
+            hex, flight, aircraft_type, lat, lon, alt_baro, gs, track,
+            timestamp, alt_baro_is_ground, nav_qnh, category
           FROM performance_test
+          ORDER BY timestamp DESC
           LIMIT 10
         `,
         postgresql: `
-          SELECT *
+          SELECT 
+            hex, flight, aircraft_type, lat, lon, alt_baro, gs, track,
+            timestamp, alt_baro_is_ground, nav_qnh, category
           FROM performance_test
+          ORDER BY timestamp DESC
           LIMIT 10
         `
       },
@@ -44,11 +50,11 @@ export class TestQueries {
         clickhouse: `
           SELECT
             toStartOfHour(timestamp) AS hour_bucket,
-            count(DISTINCT hex) AS unique_aircraft_count
+            uniq(hex) AS unique_aircraft_count
           FROM performance_test
           WHERE
             timestamp >= '${todayStartStr}'
-            AND alt_baro_is_ground = false
+            AND alt_baro_is_ground = 0
           GROUP BY hour_bucket
           ORDER BY hour_bucket ASC
         `,
@@ -60,7 +66,7 @@ export class TestQueries {
           WHERE
             timestamp >= '${todayStartStr}'::timestamp
             AND alt_baro_is_ground = false
-          GROUP BY hour_bucket
+          GROUP BY date_trunc('hour', timestamp)
           ORDER BY hour_bucket ASC
         `
       },
@@ -69,25 +75,27 @@ export class TestQueries {
         clickhouse: `
           SELECT
             toStartOfHour(timestamp) AS hour_bucket,
-            count(DISTINCT hex) AS unique_aircraft_count
+            uniq(hex) AS unique_aircraft_count,
+            avg(alt_baro) AS avg_altitude
           FROM performance_test
           WHERE
             timestamp >= '${dayBeforeYesterdayStartStr}'
             AND timestamp < '${dayBeforeYesterdayEndStr}'
-            AND alt_baro_is_ground = false
+            AND alt_baro_is_ground = 0
           GROUP BY hour_bucket
           ORDER BY hour_bucket ASC
         `,
         postgresql: `
           SELECT
             date_trunc('hour', timestamp) AS hour_bucket,
-            count(DISTINCT hex) AS unique_aircraft_count
+            count(DISTINCT hex) AS unique_aircraft_count,
+            avg(alt_baro) AS avg_altitude
           FROM performance_test
           WHERE
             timestamp >= '${dayBeforeYesterdayStartStr}'::timestamp
             AND timestamp < '${dayBeforeYesterdayEndStr}'::timestamp
             AND alt_baro_is_ground = false
-          GROUP BY hour_bucket
+          GROUP BY date_trunc('hour', timestamp)
           ORDER BY hour_bucket ASC
         `
       }

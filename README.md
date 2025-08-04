@@ -393,6 +393,92 @@ nav_heading DOUBLE PRECISION -- Allows NULL
 
 **Why This Is Intentional:**
 - ClickHouse's DEFAULT strategy is optimal for analytical queries (avoids NULL handling overhead)
+
+### Query Optimization Strategy
+The benchmark uses database-specific best practices rather than forcing identical queries:
+
+**ClickHouse (OLAP Optimization):**
+- Leverages columnar storage with `ORDER BY (timestamp, hex)` 
+- Uses native ClickHouse functions and data types optimized for analytics
+- Takes advantage of automatic query parallelization and vectorization
+- Optimized for aggregate queries over large datasets
+
+**PostgreSQL (OLTP Optimization):**
+- Uses proper B-tree indexes for row-level lookups and range queries
+- Leverages PostgreSQL's query planner for join optimization
+- Optimized for transactional patterns and concurrent access
+- Uses standard SQL for maximum compatibility
+
+**Impact on Benchmarking:**
+- Each database performs queries using its native strengths
+- Results reflect real-world performance characteristics
+- Shows how databases perform when used with appropriate optimization strategies
+- More realistic than artificially identical queries that may not be optimal for either system
+
+### Timestamp Consistency
+Both databases receive identical timestamp values to ensure fair time-based comparisons:
+
+**Format Used:** `'YYYY-MM-DD HH:MM:SS'` (no timezone, no milliseconds)
+```sql
+-- Example: '2024-08-01 14:30:00'
+-- ClickHouse: Interpreted as DateTime (local time)
+-- PostgreSQL: Stored as TIMESTAMP (no timezone)
+```
+
+**Why This Matters:**
+- Ensures time range queries filter the same logical time periods
+- Eliminates timezone interpretation differences between databases
+- Maintains data consistency for accurate performance comparisons
+- Both databases work with the same temporal dataset
+
+### Query Optimization Differences
+Each database uses optimized queries that leverage its specific strengths rather than identical SQL:
+
+#### Q1: Table Discovery
+```sql
+-- ClickHouse (Direct metadata access)
+SHOW TABLES
+
+-- PostgreSQL (Standards-compliant metadata)
+SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'
+```
+
+#### Q2: Schema Exploration  
+```sql
+-- Both databases (Columnar selection, timestamp ordering)
+SELECT hex, flight, aircraft_type, lat, lon, alt_baro, gs, track,
+       timestamp, alt_baro_is_ground, nav_qnh, category
+FROM performance_test ORDER BY timestamp DESC LIMIT 10
+```
+
+#### Q3 & Q4: Time-Series Analytics
+```sql
+-- ClickHouse (OLAP-optimized)
+SELECT
+  toStartOfHour(timestamp) AS hour_bucket,
+  uniq(hex) AS unique_aircraft_count     -- Faster cardinality estimation
+FROM performance_test
+WHERE alt_baro_is_ground = 0            -- Integer comparison (faster)
+GROUP BY hour_bucket
+ORDER BY hour_bucket ASC
+
+-- PostgreSQL (OLTP-optimized) 
+SELECT
+  date_trunc('hour', timestamp) AS hour_bucket,
+  count(DISTINCT hex) AS unique_aircraft_count  -- Exact DISTINCT count
+FROM performance_test
+WHERE alt_baro_is_ground = false               -- Boolean comparison (standard)
+GROUP BY date_trunc('hour', timestamp)         -- Explicit GROUP BY (optimizer friendly)
+ORDER BY hour_bucket ASC
+```
+
+**Key Differences:**
+- **ClickHouse**: Uses `uniq()` for approximate cardinality (faster), integer boolean comparisons, implicit GROUP BY
+- **PostgreSQL**: Uses exact `COUNT(DISTINCT)`, boolean comparisons, explicit GROUP BY for query planner
+- **Time Functions**: `toStartOfHour()` vs `date_trunc()` - both optimized for their respective engines
+- **Boolean Handling**: `= 0` vs `= false` reflects each database's internal boolean representation
+
+These differences ensure each database performs optimally rather than being constrained by artificial query equivalence.
 - PostgreSQL's NULL preservation is standard for transactional systems (data integrity)
 - Represents real-world database design patterns, not a benchmarking flaw
 - Performance comparisons remain valid as both databases handle their respective data optimally
