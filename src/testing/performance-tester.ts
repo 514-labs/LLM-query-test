@@ -4,11 +4,12 @@ import { DataGenerator, AircraftTrackingRecord } from '../data/generator';
 import { getQueries, executeQuery, QueryResult } from './queries';
 import { config as appConfig, config } from '../index';
 import { CheckpointManager, TestCheckpoint } from '../utils/checkpoint-manager';
+import { DATABASE_TYPES, DatabaseType, getDatabaseDisplayName, DatabaseConfiguration } from '../constants/database';
 
 export interface TestConfiguration {
   rowCount: number;
   withIndex: boolean;
-  database: 'clickhouse' | 'postgresql';
+  database: DatabaseType;
 }
 
 export interface TestResults {
@@ -97,7 +98,7 @@ export class PerformanceTester {
     const setupTime = Number(setupEndTime - setupStartTime) / 1_000_000;
 
     // Warmup phase
-    const database = config.database === 'clickhouse' ? this.clickhouse : 
+    const database = config.database === DATABASE_TYPES.CLICKHOUSE ? this.clickhouse : 
                     (config.withIndex ? this.postgresqlIndexed : this.postgresql);
     await this.warmupDatabase(database, `${config.database}${config.withIndex ? '-indexed' : ''}`);
 
@@ -118,7 +119,7 @@ export class PerformanceTester {
   }
 
   private async setupTest(config: TestConfiguration): Promise<void> {
-    const database = config.database === 'clickhouse' ? this.clickhouse : 
+    const database = config.database === DATABASE_TYPES.CLICKHOUSE ? this.clickhouse : 
                     (config.withIndex ? this.postgresqlIndexed : this.postgresql);
     
     console.log('Dropping existing table...');
@@ -174,22 +175,22 @@ export class PerformanceTester {
       // ClickHouse and PostgreSQL can run in parallel, but different PostgreSQL index configurations cannot
       
       // Find ClickHouse and PostgreSQL configs that can run in parallel
-      const clickhouseConfigs = rowConfigs.filter(c => c.database === 'clickhouse');
-      const postgresConfigs = rowConfigs.filter(c => c.database === 'postgresql');
+      const clickhouseConfigs = rowConfigs.filter(c => c.database === DATABASE_TYPES.CLICKHOUSE);
+      const postgresConfigs = rowConfigs.filter(c => c.database === DATABASE_TYPES.POSTGRESQL);
       
       // We can run sequential multi-database setup when we have at least ClickHouse and PostgreSQL
       if (clickhouseConfigs.length > 0 && postgresConfigs.length > 0) {
         console.log('Running sequential multi-database setup and insertion...');
         
         // Prepare all database configurations for sequential insertion
-        const sequentialDatabases: { database: any; databaseType: 'clickhouse' | 'postgresql'; withIndex?: boolean }[] = [];
+        const sequentialDatabases: { database: any; databaseType: DatabaseType; withIndex?: boolean }[] = [];
         
         // Always add ClickHouse first if present
         if (clickhouseConfigs.length > 0) {
           console.log(`Setting up ClickHouse table...`);
           await this.clickhouse.dropTable();
           await this.clickhouse.createTable();
-          sequentialDatabases.push({ database: this.clickhouse, databaseType: 'clickhouse' });
+          sequentialDatabases.push({ database: this.clickhouse, databaseType: DATABASE_TYPES.CLICKHOUSE });
         }
         
         // Add PostgreSQL configurations in order: no index first, then with index
@@ -200,14 +201,14 @@ export class PerformanceTester {
           console.log(`Setting up PostgreSQL table (no index)...`);
           await this.postgresql.dropTable();
           await this.postgresql.createTable();
-          sequentialDatabases.push({ database: this.postgresql, databaseType: 'postgresql', withIndex: false });
+          sequentialDatabases.push({ database: this.postgresql, databaseType: DATABASE_TYPES.POSTGRESQL, withIndex: false });
         }
         
         if (pgWithIndex) {
           console.log(`Setting up PostgreSQL table (with index)...`);
           await this.postgresqlIndexed.dropTable();
           await this.postgresqlIndexed.createTableWithIndex();
-          sequentialDatabases.push({ database: this.postgresqlIndexed, databaseType: 'postgresql', withIndex: true });
+          sequentialDatabases.push({ database: this.postgresqlIndexed, databaseType: DATABASE_TYPES.POSTGRESQL, withIndex: true });
         }
         
         // Run sequential insertion with comparative progress bars
@@ -255,13 +256,13 @@ export class PerformanceTester {
   }
 
   private async executeQueries(config: TestConfiguration): Promise<QueryResult[]> {
-    const database = config.database === 'clickhouse' ? this.clickhouse : 
+    const database = config.database === DATABASE_TYPES.CLICKHOUSE ? this.clickhouse : 
                     (config.withIndex ? this.postgresqlIndexed : this.postgresql);
     const queries = getQueries();
     const results: QueryResult[] = [];
 
     for (const [key, queryDef] of Object.entries(queries)) {
-      const query = config.database === 'clickhouse' ? queryDef.clickhouse : queryDef.postgresql;
+      const query = config.database === DATABASE_TYPES.CLICKHOUSE ? queryDef.clickhouse : queryDef.postgresql;
       const result = await executeQuery(database, query, queryDef.name);
       results.push(result);
     }
@@ -271,9 +272,9 @@ export class PerformanceTester {
 
   async runAllTests(): Promise<TestResults[]> {
     const configurations: TestConfiguration[] = [
-      { rowCount: appConfig.test.datasetSize, withIndex: false, database: 'clickhouse' },
-      { rowCount: appConfig.test.datasetSize, withIndex: true, database: 'postgresql' },
-      { rowCount: appConfig.test.datasetSize, withIndex: false, database: 'postgresql' },
+      { rowCount: appConfig.test.datasetSize, withIndex: false, database: DATABASE_TYPES.CLICKHOUSE },
+      { rowCount: appConfig.test.datasetSize, withIndex: true, database: DATABASE_TYPES.POSTGRESQL },
+      { rowCount: appConfig.test.datasetSize, withIndex: false, database: DATABASE_TYPES.POSTGRESQL },
     ];
 
     return this.runTestsWithCheckpoints(configurations, 'load');
@@ -281,9 +282,9 @@ export class PerformanceTester {
 
   async runQueryOnlyTests(iterations: number = 100, timeLimitMinutes: number = 60): Promise<TestResults[]> {
     const configurations: TestConfiguration[] = [
-      { rowCount: appConfig.test.datasetSize, withIndex: false, database: 'clickhouse' },
-      { rowCount: appConfig.test.datasetSize, withIndex: true, database: 'postgresql' },
-      { rowCount: appConfig.test.datasetSize, withIndex: false, database: 'postgresql' },
+      { rowCount: appConfig.test.datasetSize, withIndex: false, database: DATABASE_TYPES.CLICKHOUSE },
+      { rowCount: appConfig.test.datasetSize, withIndex: true, database: DATABASE_TYPES.POSTGRESQL },
+      { rowCount: appConfig.test.datasetSize, withIndex: false, database: DATABASE_TYPES.POSTGRESQL },
     ];
 
     return this.runTestsWithCheckpoints(configurations, 'query-only', { iterations, timeLimitMinutes });
@@ -404,8 +405,7 @@ export class PerformanceTester {
     };
 
     // Display name for the database
-    const displayName = config.database === 'clickhouse' ? 'ClickHouse' : 
-                       config.withIndex ? 'PG (w/ Index)' : 'PostgreSQL';
+    const displayName = getDatabaseDisplayName(config.database, config.withIndex);
     
     // Create progress bar
     const progressBar = new cliProgress.SingleBar({
@@ -424,7 +424,7 @@ export class PerformanceTester {
       eta_formatted: 'N/A'
     });
     
-    const database = config.database === 'clickhouse' ? this.clickhouse : 
+    const database = config.database === DATABASE_TYPES.CLICKHOUSE ? this.clickhouse : 
                     (config.withIndex ? this.postgresqlIndexed : this.postgresql);
     const queries = getQueries();
     
@@ -444,7 +444,7 @@ export class PerformanceTester {
       const iterationResults: QueryResult[] = [];
       
       for (const [key, queryDef] of Object.entries(queries)) {
-        const query = config.database === 'clickhouse' ? queryDef.clickhouse : queryDef.postgresql;
+        const query = config.database === DATABASE_TYPES.CLICKHOUSE ? queryDef.clickhouse : queryDef.postgresql;
         const result = await executeQuery(database, query, queryDef.name, true);
         iterationResults.push(result);
       }

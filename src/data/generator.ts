@@ -1,5 +1,6 @@
 import { MemoryMonitor } from '../reporting/progress-reporter';
 import { generateAndInsertParallel, generateAndInsertSequentialWithMultiBar } from './inserter';
+import { DATABASE_TYPES, DatabaseType } from '../constants/database';
 import seedrandom from 'seedrandom';
 
 export interface AircraftTrackingRecord {
@@ -86,7 +87,7 @@ export class DataGenerator {
     { name: 'ATLANTIC', latRange: [30, 50], lonRange: [-60, -20] }
   ];
 
-  generateTestData(rowCount: number, database?: 'clickhouse' | 'postgresql'): AircraftTrackingRecord[] {
+  generateTestData(rowCount: number, database?: DatabaseType): AircraftTrackingRecord[] {
     console.log(`Generating ${rowCount.toLocaleString()} aircraft tracking records...`);
     
     // Memory check before generating large datasets
@@ -111,7 +112,7 @@ export class DataGenerator {
       // Use consistent timestamp format for both databases
       // Both databases should receive the same logical time values
       let timestamp: string;
-      if (database === 'clickhouse') {
+      if (database === DATABASE_TYPES.CLICKHOUSE) {
         // ClickHouse DateTime format: 'YYYY-MM-DD HH:MM:SS' (no timezone, interpreted as local)
         timestamp = date.toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, '');
       } else {
@@ -247,7 +248,7 @@ export class DataGenerator {
     return types[Math.floor(this.random() * types.length)];
   }
 
-  async generateAndInsertInBatches(database: any, rowCount: number, databaseType: 'clickhouse' | 'postgresql', batchSize: number = 50000): Promise<void> {
+  async generateAndInsertInBatches(database: any, rowCount: number, databaseType: DatabaseType, batchSize: number = 50000): Promise<void> {
     console.log(`Generating and inserting ${rowCount.toLocaleString()} aircraft records in batches of ${batchSize.toLocaleString()}...`);
     
     // Memory check before starting
@@ -285,7 +286,7 @@ export class DataGenerator {
         
         // Use consistent timestamp format for both databases
         let timestamp: string;
-        if (databaseType === 'clickhouse') {
+        if (databaseType === DATABASE_TYPES.CLICKHOUSE) {
           // ClickHouse DateTime format: 'YYYY-MM-DD HH:MM:SS' (no timezone, interpreted as local)
           timestamp = date.toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, '');
         } else {
@@ -406,7 +407,7 @@ export class DataGenerator {
   async generateAndInsertInBatchesParallel(
     database: any, 
     rowCount: number, 
-    databaseType: 'clickhouse' | 'postgresql', 
+    databaseType: DatabaseType, 
     batchSize: number = 50000,
     parallelWorkers: number = 4
   ): Promise<void> {
@@ -434,7 +435,7 @@ export class DataGenerator {
 
   // New sequential insertion method for multiple database configurations
   async generateAndInsertInBatchesSequentialMultiDB(
-    databases: { database: any; databaseType: 'clickhouse' | 'postgresql'; withIndex?: boolean }[],
+    databases: { database: any; databaseType: DatabaseType; withIndex?: boolean }[],
     rowCount: number,
     batchSize: number = 50000,
     parallelWorkers: number = 4

@@ -3,10 +3,11 @@ import * as path from 'path';
 import { AircraftTrackingRecord } from './generator';
 import { MemoryMonitor } from '../reporting/progress-reporter';
 import { ProgressReporter, Logger } from '../reporting/progress-reporter';
+import { DATABASE_TYPES, DatabaseType, getDatabaseDisplayName } from '../constants/database';
 
 export interface InsertJob {
   records: AircraftTrackingRecord[];
-  database: 'clickhouse' | 'postgresql';
+  database: DatabaseType;
   jobId: number;
   dbConfig?: any; // Configuration for PostgreSQL instances
 }
@@ -102,7 +103,7 @@ export class ParallelInserter {
 
   async insertBatchParallel(
     records: AircraftTrackingRecord[], 
-    database: 'clickhouse' | 'postgresql',
+    database: DatabaseType,
     batchSize: number = 50000,
     suppressOutput: boolean = false,
     dbConfig?: any
@@ -178,7 +179,7 @@ export class ParallelInserter {
 
   private async processBatch(
     records: AircraftTrackingRecord[], 
-    database: 'clickhouse' | 'postgresql',
+    database: DatabaseType,
     jobId: number,
     dbConfig?: any
   ): Promise<InsertResult> {
@@ -259,7 +260,7 @@ export class ParallelInserter {
 // Parallel generation and insertion method
 export async function generateAndInsertParallel(
   rowCount: number,
-  databaseType: 'clickhouse' | 'postgresql',
+  databaseType: DatabaseType,
   batchSize: number = 50000,
   workerCount: number = 4,
   seed: string = 'default-benchmark-seed'
@@ -322,7 +323,7 @@ export async function generateAndInsertParallel(
       for (let i = 0; i < currentChunkSize; i++) {
         const randomTime = startDate.getTime() + Math.random() * timeRange;
         const date = new Date(randomTime);
-        const timestamp = databaseType === 'clickhouse' 
+        const timestamp = databaseType === DATABASE_TYPES.CLICKHOUSE 
           ? date.toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, '')
           : date.toISOString();
         
@@ -426,7 +427,7 @@ export async function generateAndInsertParallel(
 
 // Multi-database sequential insertion with individual progress bars
 export async function generateAndInsertSequentialWithMultiBar(
-  databases: { database: any; databaseType: 'clickhouse' | 'postgresql'; withIndex?: boolean }[],
+  databases: { database: any; databaseType: DatabaseType; withIndex?: boolean }[],
   rowCount: number,
   batchSize: number = 50000,
   workerCount: number = 4
@@ -445,9 +446,7 @@ export async function generateAndInsertSequentialWithMultiBar(
 
   // Display names for each database
   const displayNames = databases.map(({ databaseType, withIndex }) => {
-    if (databaseType === 'postgresql' && withIndex) return 'PG (w/ Index)';
-    if (databaseType === 'postgresql') return 'PostgreSQL';
-    return 'ClickHouse';
+    return getDatabaseDisplayName(databaseType, withIndex);
   });
 
   // Handle graceful shutdown
@@ -507,7 +506,7 @@ export async function generateAndInsertSequentialWithMultiBar(
       const inserter = new ParallelInserter(workerCount);
       
       // Extract database configuration for worker threads
-      const dbConfig = databaseType === 'postgresql' && (database as any).dbConfig ? (database as any).dbConfig : undefined;
+      const dbConfig = databaseType === DATABASE_TYPES.POSTGRESQL && (database as any).dbConfig ? (database as any).dbConfig : undefined;
       
       // Create individual progress bar for this database
       const progressBar = new cliProgress.SingleBar({

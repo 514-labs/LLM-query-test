@@ -4,6 +4,7 @@ import { PostgreSQLDatabase } from '../src/database/postgresql';
 import { DataGenerator } from '../src/data/generator';
 import { getQueries, executeQuery } from '../src/testing/queries';
 import { ConfigValidator } from '../src/config/validator';
+import { DATABASE_TYPES } from '../src/constants/database';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -92,8 +93,8 @@ async function runSmokeTests() {
     const generator1 = new DataGenerator('test-seed');
     const generator2 = new DataGenerator('test-seed');
     
-    const data1 = generator1.generateTestData(10, 'clickhouse');
-    const data2 = generator2.generateTestData(10, 'clickhouse');
+    const data1 = generator1.generateTestData(10, DATABASE_TYPES.CLICKHOUSE);
+    const data2 = generator2.generateTestData(10, DATABASE_TYPES.CLICKHOUSE);
     
     // Check deterministic generation
     if (JSON.stringify(data1) !== JSON.stringify(data2)) {
@@ -115,7 +116,7 @@ async function runSmokeTests() {
     // Mock the date range by temporarily modifying the generator's time logic
     // Generate some records for each day to ensure Q4 has data to work with
     for (let dayOffset = 0; dayOffset < 3; dayOffset++) {
-      const dayData = generator.generateTestData(Math.ceil(TEST_SIZE / 3), 'clickhouse');
+      const dayData = generator.generateTestData(Math.ceil(TEST_SIZE / 3), DATABASE_TYPES.CLICKHOUSE);
       
       // Adjust timestamps to span multiple days
       const targetDate = new Date(now.getTime() - dayOffset * 24 * 60 * 60 * 1000);

@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as readline from 'readline';
 import { Command } from 'commander';
+import { DATABASE_TYPES } from '../constants/database';
 
 // Configure CLI with Commander.js
 const program = new Command();
@@ -43,7 +44,7 @@ interface ChatMessage {
 class LatencySimulator {
   private outputDir = path.join(process.cwd(), options.outputDir);
   private databases: DatabaseConfig[] = [
-    { name: 'ClickHouse', key: 'clickhouse' },
+    { name: 'ClickHouse', key: DATABASE_TYPES.CLICKHOUSE },
     { name: 'PostgreSQL (no index)', key: 'postgresql-no-idx' },
     { name: 'PostgreSQL (with index)', key: 'postgresql-idx' }
   ];
@@ -142,9 +143,9 @@ class LatencySimulator {
         
         // Format database key
         let dbKey: string;
-        if (result.configuration.database === 'clickhouse') {
-          dbKey = 'clickhouse';
-        } else if (result.configuration.database === 'postgresql') {
+        if (result.configuration.database === DATABASE_TYPES.CLICKHOUSE) {
+          dbKey = DATABASE_TYPES.CLICKHOUSE;
+        } else if (result.configuration.database === DATABASE_TYPES.POSTGRESQL) {
           dbKey = result.configuration.withIndex ? 'postgresql-idx' : 'postgresql-no-idx';
         } else {
           continue;

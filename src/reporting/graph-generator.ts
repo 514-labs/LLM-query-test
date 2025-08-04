@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { Command } from 'commander';
 import { TestResults } from '../testing/performance-tester';
+import { DATABASE_TYPES, getDatabaseDisplayName } from '../constants/database';
 
 export class ASCIIGraphGenerator {
   private static readonly OUTPUT_DIR = path.join(process.cwd(), 'output');
@@ -249,7 +250,7 @@ export class ASCIIGraphGenerator {
   }
 
   private static formatDatabaseLabel(result: TestResults): string {
-    const db = result.configuration.database === 'clickhouse' ? 'ClickHouse' : 'PostgreSQL';
+    const db = getDatabaseDisplayName(result.configuration.database);
     const index = result.configuration.withIndex ? '(idx)' : '(no-idx)';
     return `${db} ${index}`;
   }
@@ -330,9 +331,9 @@ export class ASCIIGraphGenerator {
 
     for (const size of sortedSizes) {
       const results = resultsBySize[size];
-      const ch = results.find(r => r.configuration.database === 'clickhouse');
-      const pgIdx = results.find(r => r.configuration.database === 'postgresql' && r.configuration.withIndex);
-      const pgNoIdx = results.find(r => r.configuration.database === 'postgresql' && !r.configuration.withIndex);
+      const ch = results.find(r => r.configuration.database === DATABASE_TYPES.CLICKHOUSE);
+      const pgIdx = results.find(r => r.configuration.database === DATABASE_TYPES.POSTGRESQL && r.configuration.withIndex);
+      const pgNoIdx = results.find(r => r.configuration.database === DATABASE_TYPES.POSTGRESQL && !r.configuration.withIndex);
 
       const chTime = ch ? ch.totalQueryTime.toFixed(1) : 'N/A';
       const pgIdxTime = pgIdx ? pgIdx.totalQueryTime.toFixed(1) : 'N/A';
@@ -363,9 +364,9 @@ export class ASCIIGraphGenerator {
       
       for (const size of sortedSizes) {
         const results = resultsBySize[size];
-        const ch = results.find(r => r.configuration.database === 'clickhouse');
-        const pg = results.find(r => r.configuration.database === 'postgresql' && !r.configuration.withIndex);
-        const pgIdx = results.find(r => r.configuration.database === 'postgresql' && r.configuration.withIndex);
+        const ch = results.find(r => r.configuration.database === DATABASE_TYPES.CLICKHOUSE);
+        const pg = results.find(r => r.configuration.database === DATABASE_TYPES.POSTGRESQL && !r.configuration.withIndex);
+        const pgIdx = results.find(r => r.configuration.database === DATABASE_TYPES.POSTGRESQL && r.configuration.withIndex);
         
         if (ch && ch.queryResults[queryIndex]) {
           graphData.push({
@@ -401,9 +402,9 @@ export class ASCIIGraphGenerator {
     for (const size of sortedSizes) {
       const results = resultsBySize[size];
       const databases = [
-        { db: results.find(r => r.configuration.database === 'clickhouse'), label: 'CH' },
-        { db: results.find(r => r.configuration.database === 'postgresql' && !r.configuration.withIndex), label: 'PG' },
-        { db: results.find(r => r.configuration.database === 'postgresql' && r.configuration.withIndex), label: 'PG w/Idx' }
+        { db: results.find(r => r.configuration.database === DATABASE_TYPES.CLICKHOUSE), label: 'CH' },
+        { db: results.find(r => r.configuration.database === DATABASE_TYPES.POSTGRESQL && !r.configuration.withIndex), label: 'PG' },
+        { db: results.find(r => r.configuration.database === DATABASE_TYPES.POSTGRESQL && r.configuration.withIndex), label: 'PG w/Idx' }
       ];
       
       // Calculate totals for finding winner

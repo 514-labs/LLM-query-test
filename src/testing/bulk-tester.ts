@@ -1,6 +1,7 @@
 import dotenv from 'dotenv';
 import { Command } from 'commander';
 import { spawn, execSync } from 'child_process';
+import { DATABASE_TYPES } from '../constants/database';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as readline from 'readline';
@@ -444,9 +445,9 @@ class BulkTester {
                     const index = values[2]; // Index column
                     const totalMean = parseFloat(values[26]); // Total_Mean_ms column
                     
-                    if (database.includes('clickhouse')) {
+                    if (database.includes(DATABASE_TYPES.CLICKHOUSE)) {
                       chTime = `${totalMean.toFixed(1)}ms`;
-                    } else if (database.includes('postgresql')) {
+                    } else if (database.includes(DATABASE_TYPES.POSTGRESQL)) {
                       if (index === 'yes') {
                         pgIdxTime = `${totalMean.toFixed(1)}ms`;
                       } else {

@@ -2,6 +2,7 @@ import { parentPort } from 'worker_threads';
 import { ClickHouseDatabase } from '../database/clickhouse';
 import { PostgreSQLDatabase } from '../database/postgresql';
 import { InsertJob, InsertResult } from './inserter';
+import { DATABASE_TYPES } from '../constants/database';
 
 // Worker thread for parallel insertion
 async function processInsertJob(job: InsertJob): Promise<InsertResult> {
@@ -9,7 +10,7 @@ async function processInsertJob(job: InsertJob): Promise<InsertResult> {
   let db: ClickHouseDatabase | PostgreSQLDatabase | null = null;
   
   try {
-    if (database === 'clickhouse') {
+    if (database === DATABASE_TYPES.CLICKHOUSE) {
       db = new ClickHouseDatabase();
       await db.connect();
     } else {
