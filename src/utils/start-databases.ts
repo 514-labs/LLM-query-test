@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import dotenv from 'dotenv';
 import { execSync } from 'child_process';
-import { ConfigValidator } from './config-validator';
+import { ConfigValidator } from '../config/validator';
 
 dotenv.config();
 

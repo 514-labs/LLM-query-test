@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 import { ClickHouseDatabase } from '../src/database/clickhouse';
 import { PostgreSQLDatabase } from '../src/database/postgresql';
-import { DataGenerator } from '../src/data-generator';
-import { TestQueries } from '../src/queries';
-import { ConfigValidator } from '../src/config-validator';
+import { DataGenerator } from '../src/data/generator';
+import { TestQueries } from '../src/testing/queries';
+import { ConfigValidator } from '../src/config/validator';
 import * as fs from 'fs';
 import * as path from 'path';
 

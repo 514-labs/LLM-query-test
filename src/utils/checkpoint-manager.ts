@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { TestConfiguration, TestResults } from './performance-tester';
+import { TestConfiguration, TestResults } from '../testing/performance-tester';
 
 export interface TestCheckpoint {
   sessionId: string;
@@ -141,7 +141,7 @@ export class CheckpointManager {
     
     // Save partial results if any exist
     if (checkpoint.partialResults.length > 0) {
-      const { ResultsReporter } = await import('./reporter');
+      const { ResultsReporter } = await import('../reporting/reporter');
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').replace('T', '_').slice(0, -5);
       const filename = `partial-results_${timestamp}.json`;
       

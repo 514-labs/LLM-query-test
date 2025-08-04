@@ -1,0 +1,1 @@
+export { ConfigValidator } from './validator';

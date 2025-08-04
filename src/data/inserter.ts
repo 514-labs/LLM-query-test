@@ -1,8 +1,8 @@
 import { Worker } from 'worker_threads';
 import * as path from 'path';
-import { AircraftTrackingRecord } from './data-generator';
-import { MemoryMonitor } from './progress-reporter';
-import { ProgressReporter, Logger } from './progress-reporter';
+import { AircraftTrackingRecord } from './generator';
+import { MemoryMonitor } from '../reporting/progress-reporter';
+import { ProgressReporter, Logger } from '../reporting/progress-reporter';
 
 export interface InsertJob {
   records: AircraftTrackingRecord[];
@@ -302,7 +302,7 @@ export async function generateAndInsertParallel(
     const timeRange = endDate.getTime() - startDate.getTime();
     
     // Pre-generate aircraft pool (small memory footprint)
-    const { DataGenerator } = await import('./data-generator');
+    const { DataGenerator } = await import('./generator');
     const generator = new DataGenerator(seed);
     const aircraftCount = Math.min(rowCount / 10, 5000);
     const aircraft = (generator as any).generateAircraft(aircraftCount);
@@ -478,7 +478,7 @@ export async function generateAndInsertSequentialWithMultiBar(
 
   try {
     // Pre-generate aircraft pool (once for all databases)
-    const { DataGenerator } = await import('./data-generator');
+    const { DataGenerator } = await import('./generator');
     const generator = new DataGenerator();
     const aircraftCount = Math.min(rowCount / 10, 5000);
     const aircraft = (generator as any).generateAircraft(aircraftCount);
@@ -616,7 +616,7 @@ export async function generateAndInsertParallelWithMultiBar(
   batchSize: number = 50000,
   workerCount: number = 4
 ): Promise<void> {
-  const { ProgressReporter } = await import('./progress-reporter');
+  const { ProgressReporter } = await import('../reporting/progress-reporter');
   const cliProgress = await import('cli-progress');
   
   Logger.info(`Multi-DB parallel insertion: ${rowCount.toLocaleString()} records into ${databases.length} databases (batch size: ${batchSize.toLocaleString()})`);
@@ -675,7 +675,7 @@ export async function generateAndInsertParallelWithMultiBar(
     const timeRange = endDate.getTime() - startDate.getTime();
     
     // Pre-generate aircraft pool
-    const { DataGenerator } = await import('./data-generator');
+    const { DataGenerator } = await import('./generator');
     const generator = new DataGenerator();
     const aircraftCount = Math.min(rowCount / 10, 5000);
     const aircraft = (generator as any).generateAircraft(aircraftCount);

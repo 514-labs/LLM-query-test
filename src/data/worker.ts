@@ -1,7 +1,7 @@
 import { parentPort } from 'worker_threads';
-import { ClickHouseDatabase } from './database/clickhouse';
-import { PostgreSQLDatabase } from './database/postgresql';
-import { InsertJob, InsertResult } from './parallel-inserter';
+import { ClickHouseDatabase } from '../database/clickhouse';
+import { PostgreSQLDatabase } from '../database/postgresql';
+import { InsertJob, InsertResult } from './inserter';
 
 // Worker thread for parallel insertion
 async function processInsertJob(job: InsertJob): Promise<InsertResult> {

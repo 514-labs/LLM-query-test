@@ -1,9 +1,9 @@
-import { ClickHouseDatabase } from './database/clickhouse';
-import { PostgreSQLDatabase } from './database/postgresql';
-import { DataGenerator, AircraftTrackingRecord } from './data-generator';
+import { ClickHouseDatabase } from '../database/clickhouse';
+import { PostgreSQLDatabase } from '../database/postgresql';
+import { DataGenerator, AircraftTrackingRecord } from '../data/generator';
 import { TestQueries, QueryResult } from './queries';
-import { config as appConfig, config } from './index';
-import { CheckpointManager, TestCheckpoint } from './checkpoint-manager';
+import { config as appConfig, config } from '../index';
+import { CheckpointManager, TestCheckpoint } from '../utils/checkpoint-manager';
 
 export interface TestConfiguration {
   rowCount: number;

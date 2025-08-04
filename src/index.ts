@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
-import { PerformanceTester } from './performance-tester';
-import { ResultsReporter } from './reporter';
-import { ConfigValidator } from './config-validator';
+import { PerformanceTester } from './testing/performance-tester';
+import { ResultsReporter } from './reporting/reporter';
+import { ConfigValidator } from './config/validator';
 
 dotenv.config();
 

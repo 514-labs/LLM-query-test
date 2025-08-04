@@ -1,4 +1,4 @@
-import { TestResults } from './performance-tester';
+import { TestResults } from '../testing/performance-tester';
 import * as fs from 'fs';
 import * as path from 'path';
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import * as fs from 'fs';
 import * as path from 'path';
-import { TestResults } from './performance-tester';
+import { TestResults } from '../testing/performance-tester';
 
 // Graph generation CLI (merged from generate-graphs.ts)
 function runGraphsCLI(): void {

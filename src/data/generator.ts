@@ -1,5 +1,5 @@
-import { MemoryMonitor } from './progress-reporter';
-import { generateAndInsertParallel, generateAndInsertParallelWithMultiBar, generateAndInsertSequentialWithMultiBar } from './parallel-inserter';
+import { MemoryMonitor } from '../reporting/progress-reporter';
+import { generateAndInsertParallel, generateAndInsertParallelWithMultiBar, generateAndInsertSequentialWithMultiBar } from './inserter';
 import seedrandom from 'seedrandom';
 
 export interface AircraftTrackingRecord {

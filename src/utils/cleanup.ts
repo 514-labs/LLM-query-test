@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 import * as fs from 'fs';
 import * as path from 'path';
-import { ClickHouseDatabase } from './database/clickhouse';
-import { PostgreSQLDatabase } from './database/postgresql';
-import { config } from './index';
+import { ClickHouseDatabase } from '../database/clickhouse';
+import { PostgreSQLDatabase } from '../database/postgresql';
+import { config } from '../index';
 
 export class DatabaseCleaner {
   private static readonly OUTPUT_DIR = path.join(process.cwd(), 'output');
