@@ -6,20 +6,20 @@ import { TestResults } from './performance-tester';
 // Graph generation CLI (merged from generate-graphs.ts)
 function runGraphsCLI(): void {
   const args = process.argv.slice(2);
-  const updateReadme = args.includes('--update-readme');
+  const updateResults = args.includes('--update-readme'); // Keep legacy flag for compatibility
 
-  if (updateReadme) {
-    console.log('🔄 README update mode enabled');
+  if (updateResults) {
+    console.log('🔄 RESULTS.md update mode enabled');
   }
 
-  ASCIIGraphGenerator.generateGraphs(updateReadme);
+  ASCIIGraphGenerator.generateGraphs(updateResults);
 }
 
 export class ASCIIGraphGenerator {
   private static readonly OUTPUT_DIR = path.join(process.cwd(), 'output');
-  private static readonly README_PATH = path.join(process.cwd(), 'README.md');
+  private static readonly RESULTS_PATH = path.join(process.cwd(), 'RESULTS.md');
 
-  static generateGraphs(updateReadme: boolean = false): void {
+  static generateGraphs(updateResults: boolean = false): void {
     console.log('📊 Performance Summary Across Dataset Sizes');
     console.log('=' .repeat(50));
 
@@ -43,9 +43,9 @@ export class ASCIIGraphGenerator {
     console.log('-'.repeat(50));
     this.generateDatasetSizeComparison(resultsBySize);
 
-    if (updateReadme) {
-      console.log('\n📝 Updating README...');
-      this.updateReadmeWithResults(files);
+    if (updateResults) {
+      console.log('\n📝 Updating RESULTS.md...');
+      this.updateResultsWithResults(files);
     }
     
     console.log('\n✅ Complete');
@@ -673,45 +673,78 @@ export class ASCIIGraphGenerator {
     console.log('\nLegend: █ Setup(data+index) ▓ Queries');
   }
 
-  private static updateReadmeWithResults(files: Array<{name: string, path: string}>): void {
+  private static updateResultsWithResults(files: Array<{name: string, path: string}>): void {
     try {
-      if (!fs.existsSync(this.README_PATH)) {
-        console.log('❌ README.md not found');
+      if (!fs.existsSync(this.RESULTS_PATH)) {
+        console.log('❌ RESULTS.md not found');
         return;
       }
 
-      const readmeContent = fs.readFileSync(this.README_PATH, 'utf8');
+      const resultsContent = fs.readFileSync(this.RESULTS_PATH, 'utf8');
       
-      // Find the Results section
-      const resultsSectionStart = readmeContent.indexOf('### Results');
+      // Find the Detailed Results section
+      const resultsSectionStart = resultsContent.indexOf('## Detailed Results by Dataset Size');
       if (resultsSectionStart === -1) {
-        console.log('❌ "### Results" section not found in README');
+        console.log('❌ "## Detailed Results by Dataset Size" section not found in RESULTS.md');
         return;
       }
 
-      // Find the end of the Results section (next ## heading)
-      const nextSectionStart = readmeContent.indexOf('\n## ', resultsSectionStart);
+      // Find the end of the section (next ## heading)
+      const nextSectionStart = resultsContent.indexOf('\n## ', resultsSectionStart + 1);
       if (nextSectionStart === -1) {
-        console.log('❌ Could not find end of Results section');
+        console.log('❌ Could not find end of Detailed Results section');
         return;
       }
 
       // Generate the benchmark results content
-      const benchmarkContent = this.generateBenchmarkContent(files);
+      const benchmarkContent = this.generateDetailedBenchmarkContent(files);
       
-      // Replace the Results section content
-      const beforeResults = readmeContent.substring(0, resultsSectionStart);
-      const afterResults = readmeContent.substring(nextSectionStart);
+      // Replace the section content
+      const beforeResults = resultsContent.substring(0, resultsSectionStart);
+      const afterResults = resultsContent.substring(nextSectionStart);
       
-      const newContent = beforeResults + '### Results\n\n' + benchmarkContent + '\n' + afterResults;
+      const newContent = beforeResults + '## Detailed Results by Dataset Size\n\n' + benchmarkContent + '\n' + afterResults;
       
-      // Write back to README
-      fs.writeFileSync(this.README_PATH, newContent);
-      console.log('✅ README.md updated with benchmark results');
+      // Write back to RESULTS.md
+      fs.writeFileSync(this.RESULTS_PATH, newContent);
+      console.log('✅ RESULTS.md updated with benchmark results');
       
     } catch (error) {
-      console.log(`❌ Failed to update README: ${error instanceof Error ? error.message : String(error)}`);
+      console.log(`❌ Failed to update RESULTS.md: ${error instanceof Error ? error.message : String(error)}`);
     }
+  }
+
+  private static generateDetailedBenchmarkContent(files: Array<{name: string, path: string}>): string {
+    const timestamp = new Date().toLocaleString();
+    let content = `*Last updated: ${timestamp}*\n\n`;
+    
+    if (files.length === 0) {
+      return content + 'No benchmark results available. Run tests first: `npm start` and `npm run query-test`\n';
+    }
+
+    // Process each file and generate detailed summaries
+    const loadTestFiles: string[] = [];
+    const queryTestFiles: string[] = [];
+
+    for (const file of files) {
+      try {
+        const results = this.loadResults(file.path);
+        const isQueryOnly = results.some(r => r.iterations && r.iterations > 1);
+        
+        if (isQueryOnly) {
+          queryTestFiles.push(this.generateDetailedQueryTestSummary(results, file.name));
+        } else {
+          loadTestFiles.push(this.generateDetailedLoadTestSummary(results, file.name));
+        }
+      } catch (error) {
+        console.log(`⚠️  Skipping corrupted file: ${file.name}`);
+      }
+    }
+
+    // Combine all summaries
+    content += [...loadTestFiles, ...queryTestFiles].join('\n');
+    
+    return content;
   }
 
   private static generateBenchmarkContent(files: Array<{name: string, path: string}>): string {
@@ -770,6 +803,44 @@ export class ASCIIGraphGenerator {
     return content;
   }
 
+  private static generateDetailedLoadTestSummary(results: TestResults[], filename: string): string {
+    let summary = `### ${filename.replace('.json', '').replace(/test-results_|query-test_/, '').replace(/_/g, ' ').replace(/(\d{4})-(\d{2})-(\d{2}) (\d{2})-(\d{2})-(\d{2})/, '$1/$2/$3 $4:$5:$6')}\n\n`;
+    summary += `#### Load Test Results\n\n`;
+    summary += `*Source: ${filename}*\n\n`;
+    
+    // Group by dataset size
+    const grouped = this.groupBySize(results);
+    
+    for (const [size, sizeResults] of Object.entries(grouped)) {
+      summary += `**${size} Dataset:**\n\n`;
+      
+      // Find fastest for total query time
+      const fastest = sizeResults.reduce((min, curr) => 
+        curr.totalQueryTime < min.totalQueryTime ? curr : min
+      );
+      
+      const fastestLabel = this.formatDatabaseLabel(fastest);
+      summary += `- **Fastest Overall**: ${fastestLabel} (${fastest.totalQueryTime.toFixed(1)}ms total)\n`;
+      
+      // Show all results with individual query breakdown
+      sizeResults.forEach(result => {
+        const label = this.formatDatabaseLabel(result);
+        const setupTime = (result.setupTime / 1000).toFixed(1);
+        summary += `- **${label}**: ${result.totalQueryTime.toFixed(1)}ms queries + ${setupTime}s setup\n`;
+        
+        // Add individual query times
+        if (result.queryResults && result.queryResults.length > 0) {
+          const queryTimes = result.queryResults.map((q, i) => `Q${i+1}: ${q.duration.toFixed(1)}ms`).join(', ');
+          summary += `  - Query breakdown: ${queryTimes}\n`;
+        }
+      });
+      
+      summary += '\n';
+    }
+    
+    return summary;
+  }
+
   private static generateLoadTestSummary(results: TestResults[], filename: string): string {
     let summary = `#### Load Test Results\n\n`;
     summary += `*Source: ${filename}*\n\n`;
@@ -793,6 +864,67 @@ export class ASCIIGraphGenerator {
         const label = this.formatDatabaseLabel(result);
         const setupTime = (result.setupTime / 1000).toFixed(1);
         summary += `- **${label}**: ${result.totalQueryTime.toFixed(1)}ms queries + ${setupTime}s setup\n`;
+      });
+      
+      summary += '\n';
+    }
+    
+    return summary;
+  }
+
+  private static generateDetailedQueryTestSummary(results: TestResults[], filename: string): string {
+    let summary = `### ${filename.replace('.json', '').replace(/test-results_|query-test_/, '').replace(/_/g, ' ').replace(/(\d{4})-(\d{2})-(\d{2}) (\d{2})-(\d{2})-(\d{2})/, '$1/$2/$3 $4:$5:$6')}\n\n`;
+    summary += `#### Query Test Results (Statistical)\n\n`;
+    summary += `*Source: ${filename}*\n\n`;
+    
+    const iterations = results[0]?.iterations || 100;
+    const timedOutResults = results.filter(r => r.timedOut);
+    
+    if (timedOutResults.length > 0) {
+      summary += `⚠️  **${timedOutResults.length} test(s) timed out** - results may be incomplete\n\n`;
+    }
+    
+    // Group by dataset size
+    const grouped = this.groupBySize(results);
+    
+    for (const [size, sizeResults] of Object.entries(grouped)) {
+      summary += `**${size} Dataset** (${iterations} iterations each):\n\n`;
+      
+      // Find fastest median performance
+      const validResults = sizeResults.filter(r => r.queryStats);
+      if (validResults.length > 0) {
+        const fastest = validResults.reduce((min, curr) => {
+          const minTotal = min.queryStats!.median.reduce((sum, val) => sum + val, 0);
+          const currTotal = curr.queryStats!.median.reduce((sum, val) => sum + val, 0);
+          return currTotal < minTotal ? curr : min;
+        });
+        
+        const fastestLabel = this.formatDatabaseLabel(fastest);
+        const medianTotal = fastest.queryStats!.median.reduce((sum, val) => sum + val, 0);
+        summary += `- **Fastest (median)**: ${fastestLabel} (${medianTotal.toFixed(1)}ms total)\n`;
+      }
+      
+      // Show all results with detailed stats including confidence intervals
+      sizeResults.forEach(result => {
+        const label = this.formatDatabaseLabel(result);
+        if (result.queryStats) {
+          const stats = result.queryStats;
+          const medianTotal = stats.median.reduce((sum, val) => sum + val, 0);
+          const stdDevAvg = stats.stdDev.reduce((sum, val) => sum + val, 0) / 4;
+          const completedInfo = result.timedOut ? ` (${result.completedIterations}/${result.iterations})` : '';
+          summary += `- **${label}**: ${medianTotal.toFixed(1)}ms ±${stdDevAvg.toFixed(1)}ms${completedInfo}\n`;
+          
+          // Add individual query stats with confidence intervals
+          const queryNames = ['Q1', 'Q2', 'Q3', 'Q4'];
+          queryNames.forEach((qName, i) => {
+            if (stats.median[i] !== undefined) {
+              const ci = stats.confidenceInterval95 && stats.confidenceInterval95[i] 
+                ? ` CI95=[${stats.confidenceInterval95[i].lower.toFixed(1)}-${stats.confidenceInterval95[i].upper.toFixed(1)}]`
+                : '';
+              summary += `  - ${qName}: median=${stats.median[i].toFixed(1)}ms, mean=${stats.mean[i].toFixed(1)}ms ±${stats.stdDev[i].toFixed(1)}${ci}\n`;
+            }
+          });
+        }
       });
       
       summary += '\n';
