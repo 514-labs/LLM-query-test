@@ -1,7 +1,7 @@
 import { ClickHouseDatabase } from '../database/clickhouse';
 import { PostgreSQLDatabase } from '../database/postgresql';
 import { DataGenerator, AircraftTrackingRecord } from '../data/generator';
-import { TestQueries, QueryResult } from './queries';
+import { getQueries, executeQuery, QueryResult } from './queries';
 import { config as appConfig, config } from '../index';
 import { CheckpointManager, TestCheckpoint } from '../utils/checkpoint-manager';
 
@@ -68,14 +68,14 @@ export class PerformanceTester {
 
   async warmupDatabase(database: any, databaseName: string): Promise<void> {
     console.log(`🔥 Warming up ${databaseName} database...`);
-    const queries = TestQueries.getQueries();
+    const queries = getQueries();
     
     // Run each query 3 times for warmup
     for (let i = 0; i < 3; i++) {
       for (const queryDef of Object.values(queries)) {
         const query = database instanceof ClickHouseDatabase ? queryDef.clickhouse : queryDef.postgresql;
         try {
-          await TestQueries.executeQuery(database, query, `${databaseName} warmup`, true);
+          await executeQuery(database, query, `${databaseName} warmup`, true);
         } catch (error) {
           // Ignore warmup errors - they might be due to empty tables
           console.log(`  Warmup query failed (expected for empty tables): ${(error as Error).message.slice(0, 100)}...`);
@@ -257,12 +257,12 @@ export class PerformanceTester {
   private async executeQueries(config: TestConfiguration): Promise<QueryResult[]> {
     const database = config.database === 'clickhouse' ? this.clickhouse : 
                     (config.withIndex ? this.postgresqlIndexed : this.postgresql);
-    const queries = TestQueries.getQueries();
+    const queries = getQueries();
     const results: QueryResult[] = [];
 
     for (const [key, queryDef] of Object.entries(queries)) {
       const query = config.database === 'clickhouse' ? queryDef.clickhouse : queryDef.postgresql;
-      const result = await TestQueries.executeQuery(database, query, queryDef.name);
+      const result = await executeQuery(database, query, queryDef.name);
       results.push(result);
     }
 
@@ -426,7 +426,7 @@ export class PerformanceTester {
     
     const database = config.database === 'clickhouse' ? this.clickhouse : 
                     (config.withIndex ? this.postgresqlIndexed : this.postgresql);
-    const queries = TestQueries.getQueries();
+    const queries = getQueries();
     
     // Store all iteration results for statistical analysis
     const allIterationResults: QueryResult[][] = [];
@@ -445,7 +445,7 @@ export class PerformanceTester {
       
       for (const [key, queryDef] of Object.entries(queries)) {
         const query = config.database === 'clickhouse' ? queryDef.clickhouse : queryDef.postgresql;
-        const result = await TestQueries.executeQuery(database, query, queryDef.name, true);
+        const result = await executeQuery(database, query, queryDef.name, true);
         iterationResults.push(result);
       }
       

@@ -1,2 +1,2 @@
-export { DatabaseCleaner } from './cleanup';
+export { cleanup, clearDatabasesOnly, clearOutputOnly } from './cleanup';
 export { CheckpointManager } from './checkpoint-manager';

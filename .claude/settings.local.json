@@ -26,7 +26,8 @@
       "Bash(node:*)",
       "Bash(echo:*)",
       "Bash(mkdir:*)",
-      "Bash(mv:*)"
+      "Bash(mv:*)",
+      "Bash(grep:*)"
     ],
     "deny": []
   }

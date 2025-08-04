@@ -2,7 +2,7 @@
 import { ClickHouseDatabase } from '../src/database/clickhouse';
 import { PostgreSQLDatabase } from '../src/database/postgresql';
 import { DataGenerator } from '../src/data/generator';
-import { TestQueries } from '../src/testing/queries';
+import { getQueries, executeQuery } from '../src/testing/queries';
 import { ConfigValidator } from '../src/config/validator';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -191,10 +191,10 @@ async function runSmokeTests() {
 
   // Test 6: Query Correctness
   await test('Query correctness - Q1 (metadata)', async () => {
-    const queries = TestQueries.getQueries();
+    const queries = getQueries();
     
     // ClickHouse
-    const chResult = await TestQueries.executeQuery(
+    const chResult = await executeQuery(
       clickhouse, 
       queries.q1_show_tables.clickhouse, 
       'Q1 ClickHouse Test', 
@@ -206,7 +206,7 @@ async function runSmokeTests() {
     }
     
     // PostgreSQL
-    const pgResult = await TestQueries.executeQuery(
+    const pgResult = await executeQuery(
       postgresql, 
       queries.q1_show_tables.postgresql, 
       'Q1 PostgreSQL Test', 
@@ -219,7 +219,7 @@ async function runSmokeTests() {
   });
 
   await test('Query correctness - Q2 (sample)', async () => {
-    const queries = TestQueries.getQueries();
+    const queries = getQueries();
     
     // Both should return exactly 10 rows
     const chResult = await clickhouse.query(queries.q2_explore_schema.clickhouse);
@@ -247,7 +247,7 @@ async function runSmokeTests() {
   });
 
   await test('Query correctness - Q3 (analytical)', async () => {
-    const queries = TestQueries.getQueries();
+    const queries = getQueries();
     
     const chResult = await clickhouse.query(queries.q3_hourly_aircraft_today.clickhouse);
     const pgResult = await postgresql.query(queries.q3_hourly_aircraft_today.postgresql);
@@ -272,7 +272,7 @@ async function runSmokeTests() {
   });
 
   await test('Query correctness - Q4 (hourly buckets)', async () => {
-    const queries = TestQueries.getQueries();
+    const queries = getQueries();
     
     const chResult = await clickhouse.query(queries.q4_hourly_aircraft_day_before_yesterday.clickhouse);
     const pgResult = await postgresql.query(queries.q4_hourly_aircraft_day_before_yesterday.postgresql);
@@ -310,18 +310,18 @@ async function runSmokeTests() {
 
   // Test 7: Full Query Execution Flow
   await test('Full query execution flow', async () => {
-    const queries = TestQueries.getQueries();
+    const queries = getQueries();
     const results = [];
     
     for (const [key, queryDef] of Object.entries(queries)) {
-      const chResult = await TestQueries.executeQuery(
+      const chResult = await executeQuery(
         clickhouse,
         queryDef.clickhouse,
         `${queryDef.name} (ClickHouse)`,
         true
       );
       
-      const pgResult = await TestQueries.executeQuery(
+      const pgResult = await executeQuery(
         postgresql,
         queryDef.postgresql,
         `${queryDef.name} (PostgreSQL)`,
