@@ -17,8 +17,26 @@ export class ClickHouseDatabase {
   }
 
   async connect(): Promise<void> {
-    await this.client.ping();
-    // Connection successful (suppress worker thread connection logs)
+    // Connection test with retry logic
+    const maxRetries = 3;
+    let lastError: Error | undefined;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        await this.client.ping();
+        return; // Success
+      } catch (error) {
+        lastError = error as Error;
+        console.log(`ClickHouse connection attempt ${attempt}/${maxRetries} failed: ${lastError.message}`);
+        
+        if (attempt < maxRetries) {
+          // Wait before retry (exponential backoff)
+          await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+        }
+      }
+    }
+    
+    throw new Error(`Failed to connect to ClickHouse after ${maxRetries} attempts: ${lastError?.message}`);
   }
 
   async ensureDatabaseExists(): Promise<void> {

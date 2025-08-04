@@ -22,25 +22,17 @@ export class ParallelInserter {
   private workers: Worker[] = [];
   private workerPool: Worker[] = [];
   private activeJobs = 0;
+  private maxWorkers: number;
+  private createdWorkers = 0;
   
   constructor(private workerCount: number = 4) {
-    Logger.verbose(`Initializing parallel inserter with ${workerCount} workers`);
+    this.maxWorkers = workerCount;
+    Logger.verbose(`Initializing parallel inserter with up to ${workerCount} workers`);
   }
 
   async initialize(): Promise<void> {
-    Logger.verbose(`Initializing ${this.workerCount} worker threads...`);
-    // Pre-create worker pool
-    for (let i = 0; i < this.workerCount; i++) {
-      try {
-        const worker = await this.createWorker();
-        this.workerPool.push(worker);
-        Logger.verbose(`Worker ${i + 1}/${this.workerCount} ready`);
-      } catch (error) {
-        Logger.error(`Failed to create worker ${i + 1}: ${error instanceof Error ? error.message : String(error)}`);
-        throw error;
-      }
-    }
-    Logger.verbose(`All ${this.workerCount} workers initialized`);
+    Logger.verbose(`Parallel inserter ready (lazy worker creation enabled)`);
+    // Workers will be created on-demand to save memory
   }
 
   async cleanup(): Promise<void> {
@@ -232,6 +224,25 @@ export class ParallelInserter {
   }
 
   private async getAvailableWorker(): Promise<Worker> {
+    // If we have available workers in the pool, use one
+    if (this.workerPool.length > 0) {
+      return this.workerPool.shift()!;
+    }
+    
+    // If we haven't created all workers yet, create a new one
+    if (this.createdWorkers < this.maxWorkers) {
+      try {
+        const worker = await this.createWorker();
+        this.createdWorkers++;
+        Logger.verbose(`Created worker ${this.createdWorkers}/${this.maxWorkers} on demand`);
+        return worker;
+      } catch (error) {
+        Logger.error(`Failed to create worker: ${error instanceof Error ? error.message : String(error)}`);
+        throw error;
+      }
+    }
+    
+    // Otherwise wait for a worker to become available
     while (this.workerPool.length === 0) {
       // Wait a bit and check again
       await new Promise(resolve => setTimeout(resolve, 100));

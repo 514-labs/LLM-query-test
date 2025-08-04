@@ -20,10 +20,28 @@ export class PostgreSQLDatabase {
   }
 
   async connect(): Promise<void> {
-    // Simple connection test
-    const client = await this.pool.connect();
-    await client.query('SELECT NOW()');
-    client.release();
+    // Connection test with retry logic
+    const maxRetries = 3;
+    let lastError: Error | undefined;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const client = await this.pool.connect();
+        await client.query('SELECT NOW()');
+        client.release();
+        return; // Success
+      } catch (error) {
+        lastError = error as Error;
+        console.log(`PostgreSQL connection attempt ${attempt}/${maxRetries} failed: ${lastError.message}`);
+        
+        if (attempt < maxRetries) {
+          // Wait before retry (exponential backoff)
+          await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+        }
+      }
+    }
+    
+    throw new Error(`Failed to connect to PostgreSQL after ${maxRetries} attempts: ${lastError?.message}`);
   }
 
   async ensureDatabaseExists(): Promise<void> {

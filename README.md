@@ -479,6 +479,26 @@ ORDER BY hour_bucket ASC
 - **Boolean Handling**: `= 0` vs `= false` reflects each database's internal boolean representation
 
 These differences ensure each database performs optimally rather than being constrained by artificial query equivalence.
+
+## Memory & Connection Management
+
+### Memory Optimization
+- **Streaming Data Generation**: Parallel mode generates data in chunks on-the-fly (no full dataset in memory)
+- **Large Dataset Warning**: Alerts when non-parallel mode generates >1GB datasets
+- **Lazy Worker Creation**: Worker threads created on-demand instead of pre-allocated
+- **Batch Processing**: Data generated and inserted in configurable chunks (default 50K records)
+
+### Connection Resilience  
+- **Retry Logic**: Both databases retry connections 3 times with exponential backoff
+- **Worker Cleanup**: Database connections properly closed even on errors
+- **Connection Pooling**: PostgreSQL uses configurable connection pool (max 20 connections)
+- **Resource Limits**: Worker threads have configurable timeout (WORKER_TIMEOUT_MS)
+
+### Best Practices
+- For datasets >10M records, ensure adequate Docker memory allocation
+- Monitor worker thread creation in logs during large inserts
+- Use `PARALLEL_WORKERS` env var to control memory usage (default 4)
+- Database connections are created per-worker for isolation
 - PostgreSQL's NULL preservation is standard for transactional systems (data integrity)
 - Represents real-world database design patterns, not a benchmarking flaw
 - Performance comparisons remain valid as both databases handle their respective data optimally
