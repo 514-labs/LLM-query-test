@@ -21,7 +21,6 @@ export interface InsertResult {
 export class ParallelInserter {
   private workers: Worker[] = [];
   private workerPool: Worker[] = [];
-  private activeJobs = 0;
   private maxWorkers: number;
   private createdWorkers = 0;
   
@@ -259,7 +258,6 @@ export class ParallelInserter {
 
 // Parallel generation and insertion method
 export async function generateAndInsertParallel(
-  database: any,
   rowCount: number,
   databaseType: 'clickhouse' | 'postgresql',
   batchSize: number = 50000,
@@ -318,8 +316,6 @@ export async function generateAndInsertParallel(
       const currentChunkSize = Math.min(chunkSize, rowCount - chunkStart);
       
       Logger.verbose(`Processing chunk ${chunkIndex + 1}/${totalChunks}: ${currentChunkSize.toLocaleString()} records`);
-      
-      const chunkStartTime = Date.now();
       
       // Generate records for this chunk
       const records: AircraftTrackingRecord[] = [];
@@ -428,14 +424,6 @@ export async function generateAndInsertParallel(
   }
 }
 
-// Helper function for time formatting
-function formatTime(ms: number): string {
-  if (ms < 1000) return `${Math.round(ms)}ms`;
-  if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
-  if (ms < 3600000) return `${Math.floor(ms / 60000)}m ${Math.floor((ms % 60000) / 1000)}s`;
-  return `${Math.floor(ms / 3600000)}h ${Math.floor((ms % 3600000) / 60000)}m`;
-}
-
 // Multi-database sequential insertion with individual progress bars
 export async function generateAndInsertSequentialWithMultiBar(
   databases: { database: any; databaseType: 'clickhouse' | 'postgresql'; withIndex?: boolean }[],
@@ -503,7 +491,7 @@ export async function generateAndInsertSequentialWithMultiBar(
     
     // Then connect and set up tables
     for (let dbIndex = 0; dbIndex < databases.length; dbIndex++) {
-      const { database, databaseType, withIndex } = databases[dbIndex];
+      const { database } = databases[dbIndex];
       
       await database.connect();
       
@@ -609,151 +597,6 @@ export async function generateAndInsertSequentialWithMultiBar(
   }
 }
 
-// Multi-database parallel insertion with simultaneous progress bars
-export async function generateAndInsertParallelWithMultiBar(
-  databases: { database: any; databaseType: 'clickhouse' | 'postgresql' }[],
-  rowCount: number,
-  batchSize: number = 50000,
-  workerCount: number = 4
-): Promise<void> {
-  const { ProgressReporter } = await import('../reporting/progress-reporter');
-  const cliProgress = await import('cli-progress');
-  
-  Logger.info(`Multi-DB parallel insertion: ${rowCount.toLocaleString()} records into ${databases.length} databases (batch size: ${batchSize.toLocaleString()})`);
-  
-  // Helper function to format time in mm:ss
-  const formatTime = (seconds: number): string => {
-    if (seconds < 60) return `${Math.round(seconds)}s`;
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = Math.round(seconds % 60);
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
-  };
-
-  // Create multi-bar container
-  const multibar = new cliProgress.MultiBar({
-    clearOnComplete: false,
-    hideCursor: true,
-    format: '{database}: [{bar}] {percentage}% | {value}/{total} | {rate}/sec | {duration_formatted} | ETA: {eta_formatted}',
-    barCompleteChar: '█',
-    barIncompleteChar: '░',
-    barsize: 30,
-    formatTime: formatTime
-  }, cliProgress.Presets.shades_classic);
-
-  // Create progress bars for each database
-  const progressBars = databases.map(({ databaseType }) => {
-    return multibar.create(rowCount, 0, {
-      database: databaseType.padEnd(10),
-      rate: '0',
-      duration_formatted: '0s',
-      eta_formatted: 'N/A'
-    });
-  });
-
-  // Handle graceful shutdown
-  let shutdownRequested = false;
-  const handleShutdown = () => {
-    if (!shutdownRequested) {
-      shutdownRequested = true;
-      Logger.warn('Shutdown requested. Finishing current operations...');
-    }
-  };
-  process.on('SIGINT', handleShutdown);
-  process.on('SIGTERM', handleShutdown);
-
-  try {
-    // Create individual inserters for each database
-    const inserters = databases.map(() => new ParallelInserter(workerCount));
-    
-    // Initialize all inserters
-    await Promise.all(inserters.map(inserter => inserter.initialize()));
-    Logger.verbose(`Initialized ${databases.length} parallel inserters with ${workerCount} workers each`);
-
-    // Use streaming generation approach
-    const startDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    const endDate = new Date();
-    const timeRange = endDate.getTime() - startDate.getTime();
-    
-    // Pre-generate aircraft pool
-    const { DataGenerator } = await import('./generator');
-    const generator = new DataGenerator();
-    const aircraftCount = Math.min(rowCount / 10, 5000);
-    const aircraft = (generator as any).generateAircraft(aircraftCount);
-    Logger.verbose(`Generated ${aircraftCount} unique aircraft profiles`);
-    
-    // Process in manageable chunks
-    const chunkSize = Math.min(500000, Math.max(batchSize * workerCount * 2, 100000));
-    const totalChunks = Math.ceil(rowCount / chunkSize);
-    let processedRecords = 0;
-    
-    const startTime = Date.now();
-    const processedByDatabase = databases.map(() => 0);
-    
-    for (let chunkIndex = 0; chunkIndex < totalChunks && !shutdownRequested; chunkIndex++) {
-      const currentChunkSize = Math.min(chunkSize, rowCount - (chunkIndex * chunkSize));
-      
-      Logger.verbose(`Processing chunk ${chunkIndex + 1}/${totalChunks}: ${currentChunkSize.toLocaleString()} records`);
-      
-      // Generate records for this chunk (once for all databases)
-      const records = generateRecordsForChunk(currentChunkSize, startDate, timeRange, aircraft, generator);
-      
-      // Insert into all databases in parallel
-      const insertionPromises = databases.map(async ({ database, databaseType }, dbIndex) => {
-        const inserter = inserters[dbIndex];
-        await inserter.insertBatchParallel(records, databaseType, batchSize, true);
-        
-        // Update progress for this database
-        processedByDatabase[dbIndex] += currentChunkSize;
-        const elapsed = Date.now() - startTime;
-        const rate = processedByDatabase[dbIndex] / (elapsed / 1000);
-        const eta = processedByDatabase[dbIndex] > 0 && processedByDatabase[dbIndex] < rowCount
-          ? (rowCount - processedByDatabase[dbIndex]) / rate
-          : 0;
-          
-        progressBars[dbIndex].update(processedByDatabase[dbIndex], {
-          database: databaseType.padEnd(10),
-          rate: formatNumber(Math.round(rate)),
-          duration_formatted: formatTime(elapsed / 1000),
-          eta_formatted: formatTime(eta)
-        });
-      });
-      
-      await Promise.all(insertionPromises);
-      processedRecords += currentChunkSize;
-    }
-    
-    // Complete all progress bars
-    const totalTime = Date.now() - startTime;
-    progressBars.forEach((bar, index) => {
-      const rate = rowCount / (totalTime / 1000);
-      bar.update(rowCount, {
-        database: databases[index].databaseType.padEnd(10),
-        rate: formatNumber(Math.round(rate)),
-        duration_formatted: formatTime(totalTime / 1000),
-        eta_formatted: '0s'
-      });
-    });
-    
-    multibar.stop();
-    
-    if (shutdownRequested) {
-      Logger.warn('Operation cancelled by user');
-    } else {
-      Logger.info(`Successfully inserted ${rowCount.toLocaleString()} records into ${databases.length} databases`);
-    }
-    
-    // Cleanup all inserters
-    await Promise.all(inserters.map(inserter => inserter.cleanup()));
-    
-  } catch (error) {
-    multibar.stop();
-    Logger.error(`Multi-DB insertion failed: ${error instanceof Error ? error.message : String(error)}`);
-    throw error;
-  } finally {
-    process.removeListener('SIGINT', handleShutdown);
-    process.removeListener('SIGTERM', handleShutdown);
-  }
-}
 
 // Helper function to generate records for a chunk
 function generateRecordsForChunk(

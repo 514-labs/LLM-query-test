@@ -1,5 +1,5 @@
 import { MemoryMonitor } from '../reporting/progress-reporter';
-import { generateAndInsertParallel, generateAndInsertParallelWithMultiBar, generateAndInsertSequentialWithMultiBar } from './inserter';
+import { generateAndInsertParallel, generateAndInsertSequentialWithMultiBar } from './inserter';
 import seedrandom from 'seedrandom';
 
 export interface AircraftTrackingRecord {
@@ -401,20 +401,6 @@ export class DataGenerator {
     return `${Math.floor(ms / 3600000)}h ${Math.floor((ms % 3600000) / 60000)}m`;
   }
 
-  // Keep the old method for backward compatibility
-  async insertDataInBatches(database: any, data: AircraftTrackingRecord[], batchSize: number = 50000): Promise<void> {
-    console.log(`Inserting ${data.length.toLocaleString()} records in batches of ${batchSize.toLocaleString()}...`);
-    
-    for (let i = 0; i < data.length; i += batchSize) {
-      const batch = data.slice(i, i + batchSize);
-      await database.insertBatch(batch);
-      
-      const progress = Math.min(i + batchSize, data.length);
-      console.log(`Inserted ${progress.toLocaleString()} / ${data.length.toLocaleString()} records`);
-    }
-    
-    console.log('Data insertion complete');
-  }
 
   // New parallel insertion method
   async generateAndInsertInBatchesParallel(
@@ -436,7 +422,7 @@ export class DataGenerator {
     }
     
     try {
-      await generateAndInsertParallel(database, rowCount, databaseType, batchSize, parallelWorkers);
+      await generateAndInsertParallel(rowCount, databaseType, batchSize, parallelWorkers);
     } catch (error) {
       console.log(`⚠️  Parallel insertion failed: ${error instanceof Error ? error.message : String(error)}`);
       console.log(`🔄 Falling back to sequential insertion...`);

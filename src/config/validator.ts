@@ -150,7 +150,6 @@ export class ConfigValidator {
    * Check for port conflicts across all database configurations
    */
   validatePortConflicts(ports: { [key: string]: number }): void {
-    const portValues = Object.values(ports);
     const portEntries = Object.entries(ports);
     
     for (let i = 0; i < portEntries.length; i++) {

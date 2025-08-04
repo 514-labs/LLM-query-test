@@ -1,2 +1,2 @@
 export { DataGenerator, type AircraftTrackingRecord } from './generator';
-export { generateAndInsertParallel, generateAndInsertParallelWithMultiBar, generateAndInsertSequentialWithMultiBar } from './inserter';
+export { generateAndInsertParallel, generateAndInsertSequentialWithMultiBar } from './inserter';

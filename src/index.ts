@@ -10,7 +10,9 @@ program
   .name('db-performance-tester')
   .description('Performance testing application for ClickHouse vs PostgreSQL with LLM query patterns')
   .version('1.0.0')
-  .allowUnknownOption() // Allow test-specific options without showing them in help
+  .option('--query-only', 'Run only query tests (skip data generation)')
+  .option('--iterations <number>', 'Number of iterations per test')
+  .option('--time-limit <minutes>', 'Time limit per test in minutes')
   .addHelpText('after', `
 
 Available commands:
@@ -23,26 +25,20 @@ Available commands:
 `);
 
 // Parse CLI arguments early to handle --help before any initialization
-program.parse();
+program.parse(process.argv);
+const options = program.opts();
 
 // Re-export config for backward compatibility
 export { config };
 
 
 async function main() {
-  // Manually parse test-specific options from process.argv
-  const args = process.argv;
-  const queryOnly = args.includes('--query-only');
-  
-  const iterationsIndex = args.findIndex(arg => arg === '--iterations');
-  const iterationsArg = iterationsIndex !== -1 && iterationsIndex + 1 < args.length ? args[iterationsIndex + 1] : null;
-  
-  const timeLimitIndex = args.findIndex(arg => arg === '--time-limit');
-  const timeLimitArg = timeLimitIndex !== -1 && timeLimitIndex + 1 < args.length ? args[timeLimitIndex + 1] : null;
+  // Use parsed Commander.js options
+  const queryOnly = options.queryOnly || false;
   
   // Get configuration from .env first, then override with CLI options
-  const iterations = parseInt(iterationsArg || config.test.queryIterations.toString());
-  const timeLimitMinutes = parseInt(timeLimitArg || config.test.queryTimeLimit.toString());
+  const iterations = parseInt(options.iterations || config.test.queryIterations.toString());
+  const timeLimitMinutes = parseInt(options.timeLimit || config.test.queryTimeLimit.toString());
   
   const tester = new PerformanceTester();
   

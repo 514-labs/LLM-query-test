@@ -304,7 +304,7 @@ class BulkTester {
 
   private async startDatabases(): Promise<boolean> {
     console.log('\x1b[33mStarting database containers...\x1b[0m');
-    const result = await this.runCommand('npm', ['run', 'start-dbs']);
+    const result = await this.runCommand('npm', ['run', 'start-dbs', '--', '--cleanup-first']);
     
     if (result.success) {
       console.log('\x1b[32mDatabases started successfully\x1b[0m');
