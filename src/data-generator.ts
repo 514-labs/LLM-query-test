@@ -90,7 +90,7 @@ export class DataGenerator {
     console.log(`Generating ${rowCount.toLocaleString()} aircraft tracking records...`);
     
     // Memory check before generating large datasets
-    const estimatedMemoryMB = (rowCount * 1024) / 1024 / 1024; // ~1KB per record
+    const estimatedMemoryMB = (rowCount * 1024) / (1024 * 1024); // ~1KB per record
     if (estimatedMemoryMB > 1000) {
       console.warn(`⚠️  Large dataset (${estimatedMemoryMB.toFixed(0)}MB estimated). Using non-streaming generation.`);
     }

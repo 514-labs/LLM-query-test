@@ -17,6 +17,7 @@
     "clean": "npm run build && node dist/cleanup.js",
     "clean:db": "npm run build && node dist/cleanup.js --db-only",
     "clean:output": "npm run build && node dist/cleanup.js --output-only",
+    "test:smoke": "npm run build && node dist/tests/smoke.test.js",
     "help": "npm run build && node dist/index.js --help"
   },
   "dependencies": {

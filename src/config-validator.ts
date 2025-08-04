@@ -5,6 +5,8 @@ export interface ValidationError {
 }
 
 export class ConfigValidator {
+  private static readonly MAX_CPU_COUNT = 32;
+  private static readonly MIN_CPU_COUNT = 0.1;
   private errors: ValidationError[] = [];
 
   /**
@@ -89,20 +91,20 @@ export class ConfigValidator {
     const envValue = process.env[envVar] || defaultValue;
     const cpuValue = parseFloat(envValue);
 
-    if (isNaN(cpuValue) || cpuValue <= 0) {
+    if (isNaN(cpuValue) || cpuValue < ConfigValidator.MIN_CPU_COUNT) {
       this.errors.push({
         variable: envVar,
         value: envValue,
-        message: 'Invalid CPU count. Expected: positive number (e.g., "2", "1.5", "0.5")'
+        message: `Invalid CPU count. Expected: number >= ${ConfigValidator.MIN_CPU_COUNT} (e.g., "2", "1.5", "0.5")`
       });
       return defaultValue;
     }
 
-    if (cpuValue > 32) {
+    if (cpuValue > ConfigValidator.MAX_CPU_COUNT) {
       this.errors.push({
         variable: envVar,
         value: envValue,
-        message: 'CPU count seems unreasonably high. Expected: reasonable number (0.1-32)'
+        message: `CPU count seems unreasonably high. Expected: reasonable number (0.1-${ConfigValidator.MAX_CPU_COUNT})`
       });
       return defaultValue;
     }

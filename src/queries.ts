@@ -66,7 +66,7 @@ export class TestQueries {
           WHERE
             timestamp >= '${todayStartStr}'::timestamp
             AND alt_baro_is_ground = false
-          GROUP BY date_trunc('hour', timestamp)
+          GROUP BY hour_bucket
           ORDER BY hour_bucket ASC
         `
       },
@@ -95,7 +95,7 @@ export class TestQueries {
             timestamp >= '${dayBeforeYesterdayStartStr}'::timestamp
             AND timestamp < '${dayBeforeYesterdayEndStr}'::timestamp
             AND alt_baro_is_ground = false
-          GROUP BY date_trunc('hour', timestamp)
+          GROUP BY hour_bucket
           ORDER BY hour_bucket ASC
         `
       }
