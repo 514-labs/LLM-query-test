@@ -1,10 +1,9 @@
 # LLM Query Performance Testing
 
-This benchmark is designed to: 
-- Measure the experiential impact of database performance on LLM chat interactions
-- Compare OLAP (ClickHouse) vs OLTP (PostgreSQL) using [LLM-style query patterns](https://github.com/514-labs/LLM-query-test/blob/main/BENCHMARK_METHODOLOGY.md#query-pattern-design)
-- Demonstrate how query latency affects AI-powered data conversations
-- Unlike [traditional benchmarks](https://benchmark.clickhouse.com/), focuses on user experience rather than raw metrics
+This benchmark is designed to measure the experiential impact of database performance on LLM chat interactions. Unlike [traditional benchmarks](https://benchmark.clickhouse.com/), this focuses on showing user experience differences rather than raw metrics.
+
+- Compare OLAP (ClickHouse) vs OLTP (PostgreSQL) using [LLM-style query patterns](https://github.com/514-labs/LLM-query-test/blob/main/BENCHMARK_METHODOLOGY.md#query-pattern-design) with `npm run bulk-test`
+- Demonstrate how query latency affects AI-powered data conversations with `npm run latency-sim`
 
 📊 **[Results →](RESULTS.md)** ClickHouse is faster on datasets >50K records (up to 16.8x faster at 10M records). 
 
@@ -101,3 +100,5 @@ Key `.env` settings: `BULK_TEST_SIZES`, `DATASET_SIZE`, `BATCH_SIZE`, `PARALLEL_
 - Memory issues: reduce `DATASET_SIZE`
 - Port conflicts: check 8123, 5432, 5433
 - Reset: `npm run clean && npm run kill-dbs && npm run start-dbs`
+
+*Built by the team behind the open source [Moose Stack](https://github.com/514-labs/moose).*
