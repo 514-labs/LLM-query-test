@@ -1,17 +1,18 @@
 # LLM Query Performance Testing
 
-OLAP (ClickHouse) vs OLTP (PostgreSQL) performance benchmarking using LLM-style query patterns.
+This benchmark is designed to: 
+- Measure the experiential impact of database performance on LLM chat interactions
+- Compare OLAP (ClickHouse) vs OLTP (PostgreSQL) using [LLM-style query patterns](https://github.com/514-labs/LLM-query-test/blob/main/BENCHMARK_METHODOLOGY.md#query-pattern-design)
+- Demonstrate how query latency affects AI-powered data conversations
+- Unlike [traditional benchmarks](https://benchmark.clickhouse.com/), focuses on user experience rather than raw metrics
 
-**Purpose**: Measure the experiential impact of database performance on LLM chat interactions. Unlike [traditional benchmarks](https://benchmark.clickhouse.com/) focused on raw performance metrics, this tool demonstrates how query latency affects the user experience of AI-powered data conversations.
+📊 **[Results →](RESULTS.md)** ClickHouse is faster on datasets >50K records (up to 16.8x faster at 10M records). 
 
 ![Latency Simulation](latency-sim-10m.gif)
 
 The above chat shows the resulting chat performance, at 10m rows, of Postgres (unindexed) and ClickHouse. 
 
-📊 **[Results →](RESULTS.md)**
-**Results**: ClickHouse is faster on datasets >50K records (up to 16.8x faster at 10M records). 
-
-This repo ships with results for tests run from 10k to 10m rows (see [Benchmarking Methodology](BENCHMARK_METHODOLOGY.md) for how those tests were run). 
+This repo ships with results for tests run from 10k to 10m rows (see [Benchmarking Methodology](BENCHMARK_METHODOLOGY.md) for details). 
 
 ## Prerequisites
 
