@@ -1,10 +1,10 @@
 # Database Schema Comparison
 
-Complete schema definitions for aircraft tracking performance test across ClickHouse (OLAP) and PostgreSQL (OLTP) implementations.
+Benchmark Schema definitions.
 
 ## Overview
 
-This benchmark uses a 46-column aircraft tracking dataset based on ADS-B (Automatic Dependent Surveillance-Broadcast) data, representing realistic aviation telemetry with position, navigation, transponder, and metadata fields.
+Difference in schemas represent best practices for ClickHouse and Postgres.
 
 ## Complete Schema Comparison
 
