@@ -8,7 +8,7 @@ This repo provides:
 
 ![Latency Simulation](latency-sim-10m.gif)
 
-The below chat shows the resulting chat performance, at 10m rows, of Postgres (unindexed) and ClickHouse. 
+The above chat shows the resulting chat performance, at 10m rows, of Postgres (unindexed) and ClickHouse. 
 The ClickHouse backed chat is able to answer 4 questions faster than the Postgres backed chat can answer a single question. 
 You can run the simulation on any set of test results `npm run latency-sim` (and you can run the tests yourself too `npm run bulk-test`).
 

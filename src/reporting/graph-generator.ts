@@ -399,6 +399,8 @@ export class ASCIIGraphGenerator {
     console.log('\nTotal (all queries combined):');
     console.log('Legend: █ Q1 ▓ Q2 ▒ Q3 ░ Q4');
     
+    // Calculate global max across ALL dataset sizes for consistent scaling
+    let globalMaxTotal = 0;
     for (const size of sortedSizes) {
       const results = resultsBySize[size];
       const databases = [
@@ -407,7 +409,24 @@ export class ASCIIGraphGenerator {
         { db: results.find(r => r.configuration.database === DATABASE_TYPES.POSTGRESQL && r.configuration.withIndex), label: 'PG w/Idx' }
       ];
       
-      // Calculate totals for finding winner
+      const sizeMaxTotal = Math.max(...databases
+        .filter(d => d.db && d.db.queryResults)
+        .map(d => d.db!.queryResults.reduce((sum, q) => sum + (q?.duration || 0), 0))
+      );
+      globalMaxTotal = Math.max(globalMaxTotal, sizeMaxTotal);
+    }
+    
+    const globalScale = globalMaxTotal > 0 ? 50 / globalMaxTotal : 0;
+    
+    for (const size of sortedSizes) {
+      const results = resultsBySize[size];
+      const databases = [
+        { db: results.find(r => r.configuration.database === DATABASE_TYPES.CLICKHOUSE), label: 'CH' },
+        { db: results.find(r => r.configuration.database === DATABASE_TYPES.POSTGRESQL && !r.configuration.withIndex), label: 'PG' },
+        { db: results.find(r => r.configuration.database === DATABASE_TYPES.POSTGRESQL && r.configuration.withIndex), label: 'PG w/Idx' }
+      ];
+      
+      // Calculate totals for finding winner (per dataset size)
       const totals = databases
         .filter(({ db }) => db && db.queryResults)
         .map(({ db, label }) => ({
@@ -426,17 +445,11 @@ export class ASCIIGraphGenerator {
         const q4 = db.queryResults[3]?.duration || 0;
         const total = q1 + q2 + q3 + q4;
         
-        // Calculate bar lengths (60 chars max width)
-        const maxTotal = Math.max(...databases
-          .filter(d => d.db && d.db.queryResults)
-          .map(d => d.db!.queryResults.reduce((sum, q) => sum + (q?.duration || 0), 0))
-        );
-        
-        const scale = maxTotal > 0 ? 50 / maxTotal : 0;
-        const q1Length = Math.round(q1 * scale);
-        const q2Length = Math.round(q2 * scale);
-        const q3Length = Math.round(q3 * scale);
-        const q4Length = Math.round(q4 * scale);
+        // Use global scale for consistent x-axis normalization
+        const q1Length = Math.round(q1 * globalScale);
+        const q2Length = Math.round(q2 * globalScale);
+        const q3Length = Math.round(q3 * globalScale);
+        const q4Length = Math.round(q4 * globalScale);
         
         const q1Bar = '█'.repeat(q1Length);
         const q2Bar = '▓'.repeat(q2Length);
