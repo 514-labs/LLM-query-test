@@ -27,27 +27,26 @@ npm run build
 # Configure (optional - defaults work fine)
 cp .env.example .env
 
-# Start databases and run benchmark
-npm run start-dbs
-npm start
+# Run comprehensive bulk test
+npm run bulk-test
 ```
 
-Default: 10M records. Adjust `DATASET_SIZE` in `.env`.
+Bulk test runs 9 dataset sizes (5K to 25M records). Configure in `.env` or use `npm start` for single 10M test.
 
 ## Commands
 
-- `npm start` - Full benchmark (data generation + queries)
-- `npm run query-test` - Query-only test with statistical analysis
+- `npm start` - Run Benchmark (data generation + queries)
+- `npm run query-test` - Query-only test with statistical analysis (requires databases running/populated)
 - `npm run bulk-test` - Comprehensive testing across multiple dataset sizes  
-- `npm run generate-graphs` - Generate ASCII performance visualizations
+- `npm run generate-graphs` - Generate performance visualizations
 - `npm run latency-sim` - Interactive LLM conversation delay simulator
 - `npm run clean` - Reset databases and clear results
 
-CLI options: `--query-only`, `--iterations N`, `--time-limit N`. Use `--help` for details.
+CLI options: see `npm run help`. Use `-- --help` for details for a particular command.
 
 ## Data
 
-46-column aircraft tracking records (position, altitude, transponder codes)
+46-column aircraft tracking records (position, altitude, transponder codes). See [Schema Comparison](SCHEMA_COMPARISON.md)
 
 ## Query Pattern
 
@@ -60,7 +59,7 @@ LLM simulation: "How many aircraft are in the air on average every minute for th
 
 ## Configuration
 
-Key `.env` settings: `DATASET_SIZE`, `BATCH_SIZE`, `PARALLEL_INSERT`, container resources.
+Key `.env` settings: `BULK_TEST_SIZES`, `DATASET_SIZE`, `BATCH_SIZE`, `PARALLEL_INSERT`, container resources.
 
 🔧 **[Full config →](CONFIGURATION.md)**
 
