@@ -5,6 +5,7 @@ import { DataGenerator } from '../src/data/generator';
 import { getQueries, executeQuery } from '../src/testing/queries';
 import { ConfigValidator } from '../src/config/validator';
 import { DATABASE_TYPES } from '../src/constants/database';
+import { Command } from 'commander';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -367,6 +368,30 @@ async function runSmokeTests() {
 
 // Run if executed directly
 if (require.main === module) {
+  const program = new Command();
+  
+  program
+    .name('npm run test:smoke')
+    .description('Run smoke tests to verify basic functionality')
+    .version('1.0.0')
+    .addHelpText('after', `
+    
+Smoke tests verify:
+  • Database connectivity
+  • Data generation functionality
+  • Query execution
+  • Data validation
+  • Performance baseline
+
+Requirements:
+  • Database containers must be running (npm run start-dbs)
+  
+Examples:
+  npm run test:smoke     # Run all smoke tests
+    `);
+
+  program.parse();
+  
   runSmokeTests().catch(error => {
     console.error('Smoke test runner failed:', error);
     process.exit(1);

@@ -9,9 +9,7 @@ dist/
 build/
 *.tsbuildinfo
 
-# Test outputs and results
-output/
-test-results/
+# Test outputs (keep results for sharing)
 coverage/
 tests/*.js
 tests/*.js.map

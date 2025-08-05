@@ -30,7 +30,8 @@
       "Bash(grep:*)",
       "mcp__ide__getDiagnostics",
       "Bash(cp:*)",
-      "mcp__github__get_file_contents"
+      "mcp__github__get_file_contents",
+      "mcp__github__get_issue"
     ],
     "deny": []
   }
