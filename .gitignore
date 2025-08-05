@@ -55,6 +55,6 @@ temp/
 # Claude Code local settings
 .claude/
 
-# Blog drafts
-blog-outline.md
-schema-comparison.md
+# Internal docs
+BLOG_OUTLINE.md
+CLAUDE.md

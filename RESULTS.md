@@ -1,16 +1,13 @@
 # Benchmark Results
 
-Latest comprehensive performance comparison between ClickHouse (OLAP) and PostgreSQL (OLTP) using LLM query patterns.
+Performance comparison: ClickHouse (OLAP) vs PostgreSQL (OLTP).
 
 ## Test Environment
 
-- **Machine**: Apple M3 Pro, 18GB RAM
-- **Docker Containers**: 
-  - ClickHouse server (port 8123)
-  - PostgreSQL 15 without indexes (port 5432)
-  - PostgreSQL 15 with indexes (port 5433)
-- **Resource Allocation**: Each container limited to 4GB RAM and 2 CPUs for fair comparison
-- **Dataset**: Aircraft tracking records (46 columns each) with realistic telemetry data
+- Apple M3 Pro, 18GB RAM
+- Docker: 4GB RAM, 2 CPUs per container
+- ClickHouse (8123), PostgreSQL no-idx (5432), PostgreSQL idx (5433)
+- Dataset: 46-column aircraft tracking records
 
 ## Summary Results
 
@@ -28,10 +25,10 @@ Latest comprehensive performance comparison between ClickHouse (OLAP) and Postgr
 
 ## Key Insights
 
-1. **Crossover Point**: ClickHouse becomes faster than PostgreSQL at ~25K-50K records
-2. **Scaling Pattern**: ClickHouse advantage increases dramatically with dataset size
-3. **Small Dataset Penalty**: PostgreSQL (especially with indexes) outperforms ClickHouse on small datasets
-4. **Index Impact**: PostgreSQL indexes provide 1.3-2.0x speedup but still lose to ClickHouse at scale
+- Crossover: ~25K-50K records
+- ClickHouse advantage scales exponentially
+- PostgreSQL wins on small datasets (<25K)
+- Indexes: 1.3-2.0x speedup, insufficient at scale
 
 ## Detailed Results by Dataset Size
 
@@ -55,35 +52,26 @@ Latest comprehensive performance comparison between ClickHouse (OLAP) and Postgr
 
 
 
-## Query Breakdown
+## Query Pattern
 
-The LLM query pattern simulates: *"How many aircraft are in the air on average every minute for the past hour?"*
+LLM simulation: "How many aircraft are in the air on average every minute for the past hour?"
 
-1. **Q1 (Discovery)**: `SHOW TABLES` / `information_schema` queries
-2. **Q2 (Exploration)**: `SELECT * LIMIT 10` to understand data structure  
-3. **Q3 (Analysis)**: Hourly aircraft counts with time bucketing and filtering
-4. **Q4 (Calculation)**: CTE-based average calculation across time periods
+1. Q1: Table discovery
+2. Q2: Schema exploration (LIMIT 10)
+3. Q3: Hourly counts
+4. Q4: Average calculation
 
-## Statistical Analysis
+## Methodology
 
-All query test results include:
-- **100 iterations** per configuration for statistical significance
-- **95% confidence intervals** using t-distribution approximation
-- **Standard deviation** showing consistency of performance
-- **Timeout protection** (60-minute limit per database configuration)
+- 100 iterations per test
+- 95% CI (t-distribution)
+- 60-minute timeout protection
+- Full statistics in CSV output
 
-## Visualizations
-
-Generate interactive performance graphs:
+## Output
 
 ```bash
-npm run generate-graphs                    # Terminal display
-npm run generate-graphs -- --update-readme # Update this file with latest results
+npm run generate-graphs    # ASCII visualization
 ```
 
-## Raw Data
-
-Complete results with individual query timings available in:
-- `output/test-results.json` - Detailed timing data
-- `output/test-results.csv` - Spreadsheet format
-- CSV includes confidence intervals for statistical analysis
+Raw data: `output/test-results.{json,csv}`

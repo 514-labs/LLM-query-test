@@ -1,33 +1,25 @@
-# Configuration Guide
+# Configuration
 
-Complete configuration reference for the LLM query performance testing tool.
+Environment variables and CLI options.
 
-## Environment Variables
+## Database Connections
 
-Edit `.env` file to configure all aspects of the benchmark:
-
-### Database Connections
-
-**ClickHouse:**
 ```env
+# ClickHouse
 CLICKHOUSE_HOST=localhost
 CLICKHOUSE_PORT=8123
 CLICKHOUSE_DATABASE=performance_test
 CLICKHOUSE_USERNAME=default
 CLICKHOUSE_PASSWORD=password
-```
 
-**PostgreSQL (no index):**
-```env
+# PostgreSQL (no index)
 POSTGRES_HOST=localhost
 POSTGRES_PORT=5432
 POSTGRES_DATABASE=performance_test
 POSTGRES_USERNAME=postgres
 POSTGRES_PASSWORD=postgres
-```
 
-**PostgreSQL (with index):**
-```env
+# PostgreSQL (with index)
 POSTGRES_INDEXED_HOST=localhost
 POSTGRES_INDEXED_PORT=5433
 POSTGRES_INDEXED_DATABASE=performance_test
@@ -35,223 +27,90 @@ POSTGRES_INDEXED_USERNAME=postgres
 POSTGRES_INDEXED_PASSWORD=postgres
 ```
 
-### Container Resources
-
-Control Docker container resource allocation for fair testing:
+## Container Resources
 
 ```env
-# Memory limits (examples)
+# Memory (1g, 4g, 8g)
 CLICKHOUSE_MEMORY=4g
 POSTGRES_MEMORY=4g
 POSTGRES_INDEXED_MEMORY=4g
 
-# CPU limits  
+# CPUs
 CLICKHOUSE_CPUS=2
 POSTGRES_CPUS=2
 POSTGRES_INDEXED_CPUS=2
 ```
 
-**Memory Examples:**
-- `1g` - Lightweight testing
-- `4g` - Standard testing (recommended)
-- `8g` - High-performance scenarios
+## Performance Testing
 
-### Performance Testing
-
-**Single Test Configuration:**
 ```env
-# Dataset configuration
-DATASET_SIZE=10000000          # Default 10M rows for single tests
-BATCH_SIZE=50000              # Records per batch for insertion
-
-# Query test configuration  
-QUERY_TEST_ITERATIONS=100      # Number of iterations for query-only tests
-QUERY_TEST_TIME_LIMIT=60       # Time limit in minutes for single query tests
+# Single test
+DATASET_SIZE=10000000
+BATCH_SIZE=50000
+QUERY_TEST_ITERATIONS=100
+QUERY_TEST_TIME_LIMIT=60
 
 # Parallel processing
-PARALLEL_INSERT=true          # Enable parallel data insertion
-PARALLEL_WORKERS=4            # Number of worker threads (adjust based on CPU cores)
-WORKER_TIMEOUT_MS=300000      # Worker timeout (5 minutes)
+PARALLEL_INSERT=true
+PARALLEL_WORKERS=4
+WORKER_TIMEOUT_MS=300000
 
-# Statistical improvements
-BENCHMARK_SEED=default-benchmark-seed  # Seed for reproducible data generation
-```
-
-**Bulk Test Configuration:**
-```env
-# Bulk testing dataset sizes
+# Bulk test
 BULK_TEST_SIZES=5000,10000,50000,100000,500000,1000000,5000000,10000000,25000000
+BULK_TEST_TIME_LIMIT=60
+BULK_TEST_OUTPUT_DIR=output
 
-# Bulk test timing
-BULK_TEST_TIME_LIMIT=60        # Time limit in minutes for each bulk query test
-BULK_TEST_OUTPUT_DIR=output    # Output directory for bulk test results
+# Reproducibility
+BENCHMARK_SEED=default-benchmark-seed
 ```
 
-## Advanced Features
-
-### CLI Overrides
-
-All configuration can be overridden via CLI flags:
-
-**Single Tests:**
-```bash
-npm start                                    # Use .env configuration
-npm run query-test                           # Use .env configuration  
-npm run query-test -- --iterations 200      # Override iterations only
-npm run query-test -- --time-limit 120      # Override time limit only
-npm start -- --query-only --iterations 50   # Multiple overrides
-```
-
-**Bulk Tests:**
-```bash
-npm run bulk-test                                    # Use .env configuration
-npm run bulk-test -- --sizes "1000,10000,100000"   # Override dataset sizes
-npm run bulk-test -- --time-limit 30                # Override time limit
-npm run bulk-test -- --output-dir my-results        # Override output directory
-```
-
-### Time Limits
-
-Query tests include automatic timeout protection:
-
-- Each database/index combination gets its own time limit
-- Default: 60 minutes per test configuration (configurable via `QUERY_TEST_TIME_LIMIT`)
-- CLI override: `--time-limit=120` for custom limits
-- Partial results are saved if tests timeout
-- Tests can be safely interrupted and resumed
-
-### Auto-Resume
-
-Tests automatically resume from checkpoints if interrupted:
-
-- Safe to use Ctrl+C to interrupt long-running tests
-- Progress is saved after each configuration completes
-- Automatically resumes from last checkpoint on restart
-- Use `npm run clean:output` to clear checkpoints and start fresh
-
-### Memory Monitoring
-
-Built-in memory usage protection:
-
-- Pre-test memory checks before large operations
-- Real-time monitoring during data generation
-- Automatic warnings at 85% memory usage
-- Critical alerts at 95% memory usage with suggestions
-
-### Latency Simulator
-
-Interactive demonstration of real-world performance impact:
+## CLI Overrides
 
 ```bash
-npm run latency-sim
+# Single tests
+npm run query-test -- --iterations 200
+npm run query-test -- --time-limit 120
+npm start -- --query-only --iterations 50
+
+# Bulk tests
+npm run bulk-test -- --sizes "1000,10000,100000"
+npm run bulk-test -- --time-limit 30
+npm run bulk-test -- --output-dir my-results
 ```
 
-- **Uses pre-recorded data**: No live queries - all delays based on statistical analysis from bulk tests
-- Choose dataset size and database configuration from actual test results  
-- Experience realistic chat conversation delays with natural variance
-- Individual query timing (Q1-Q4) with proper standard deviations from real measurements
+## Features
+
+- **Time limits**: 60 min default, partial results saved on timeout
+- **Auto-resume**: Ctrl+C safe, automatic checkpoint recovery
+- **Memory monitoring**: Warnings at 85%, critical at 95%
+- **Latency simulator**: `npm run latency-sim` - interactive performance demo
 
 ## Container Management
 
-### Automated Setup
-
 ```bash
-npm run start-dbs    # Start all databases with resource limits
-npm run kill-dbs     # Remove all database containers
+npm run start-dbs    # Start all databases
+npm run kill-dbs     # Remove containers
 ```
 
-### Manual Setup
-
-**ClickHouse:**
-```bash
-docker run -d --name clickhouse-server \
-  --memory=4g --cpus=2 \
-  --ulimit nofile=262144:262144 \
-  -p 8123:8123 -p 9000:9000 \
-  -e CLICKHOUSE_PASSWORD=password \
-  clickhouse/clickhouse-server
-```
-
-**PostgreSQL (no indexes):**
-```bash
-docker run -d --name postgres \
-  -e POSTGRES_PASSWORD=postgres \
-  -p 5432:5432 \
-  --memory=4g --cpus=2 \
-  postgres:15
-```
-
-**PostgreSQL (with indexes):**
-```bash
-docker run -d --name postgres-indexed \
-  -e POSTGRES_PASSWORD=postgres \
-  -p 5433:5432 \
-  --memory=4g --cpus=2 \
-  postgres:15
-```
+Manual setup: See Docker commands in `src/utils/start-databases.ts`
 
 ## Performance Tuning
 
-### Memory Optimization
+**Large datasets (>10M):**
+- `BATCH_SIZE=25000` - reduce memory
+- `PARALLEL_WORKERS=2` - reduce load
 
-For large datasets (>10M records):
-
-```env
-BATCH_SIZE=25000              # Smaller batches reduce memory usage
-PARALLEL_WORKERS=2            # Fewer workers reduce memory pressure
-PARALLEL_INSERT=true          # Use streaming generation
-```
-
-### CPU Optimization
-
-For faster data generation:
-
-```env
-PARALLEL_WORKERS=8            # Match your CPU core count
-BATCH_SIZE=100000             # Larger batches reduce overhead
-CLICKHOUSE_CPUS=4             # Allocate more CPU to databases
-POSTGRES_CPUS=4
-POSTGRES_INDEXED_CPUS=4
-```
-
-### Storage Optimization
-
-For faster I/O:
-
-- Use SSD storage for Docker containers
-- Increase Docker's allocated storage
-- Consider mounting database volumes on fastest available storage
+**Speed optimization:**
+- `PARALLEL_WORKERS=8` - match CPU cores
+- `BATCH_SIZE=100000` - reduce overhead
+- Use SSD storage
 
 ## Troubleshooting
 
-### Common Issues
+**Connection issues:** `docker ps`, check ports 8123/5432/5433
 
-1. **Database connection issues**
-   - Check that containers are running: `docker ps`
-   - Verify ports are not in use: `lsof -i :8123 -i :5432 -i :5433`
-   - Check container logs: `docker logs clickhouse-server`
+**Memory issues:** Reduce `DATASET_SIZE` or `PARALLEL_WORKERS`
 
-2. **Memory issues**
-   - Reduce `DATASET_SIZE` for initial testing
-   - Lower `PARALLEL_WORKERS` count
-   - Increase Docker's memory allocation
+**Slow inserts:** Enable `PARALLEL_INSERT=true`
 
-3. **Permission errors**
-   - Ensure database users have CREATE/DROP/INSERT permissions
-   - Check Docker container user permissions
-
-4. **Long insertion times**
-   - Enable `PARALLEL_INSERT=true`
-   - Increase `PARALLEL_WORKERS` (match CPU cores)
-   - Use larger `BATCH_SIZE` for better throughput
-
-### Validation
-
-The tool includes built-in validation for:
-
-- Port conflicts between database instances
-- Memory format validation (e.g., "4g", "1024m")
-- CPU count validation
-- Environment variable completeness
-
-Run any command to see validation results - the tool will warn about configuration issues before starting tests.
+**Validation:** Automatic port/memory/CPU checks on startup

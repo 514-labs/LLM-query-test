@@ -28,7 +28,9 @@
       "Bash(mkdir:*)",
       "Bash(mv:*)",
       "Bash(grep:*)",
-      "mcp__ide__getDiagnostics"
+      "mcp__ide__getDiagnostics",
+      "Bash(cp:*)",
+      "mcp__github__get_file_contents"
     ],
     "deny": []
   }
