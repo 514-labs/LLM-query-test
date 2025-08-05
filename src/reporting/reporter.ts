@@ -1,4 +1,5 @@
-import { TestResults } from './performance-tester';
+import { TestResults } from '../testing/performance-tester';
+import { DATABASE_TYPES, getDatabaseDisplayName } from '../constants/database';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -63,7 +64,7 @@ export class ResultsReporter {
 
     const rows = results.map(result => {
       const config = result.configuration;
-      const dbName = config.database === 'clickhouse' ? 'ClickHouse' : 'PostgreSQL';
+      const dbName = getDatabaseDisplayName(config.database);
       const indexStatus = config.withIndex ? '✓' : '✗';
       const rowCount = config.rowCount >= 1000000 
         ? `${(config.rowCount / 1000000).toFixed(0)}M`
@@ -105,9 +106,9 @@ export class ResultsReporter {
   private static printPerformanceInsights(results: TestResults[]): void {
     if (results.length < 2) return;
     
-    const ch = results.find(r => r.configuration.database === 'clickhouse');
-    const pgIndexed = results.find(r => r.configuration.database === 'postgresql' && r.configuration.withIndex);
-    const pgNoIndex = results.find(r => r.configuration.database === 'postgresql' && !r.configuration.withIndex);
+    const ch = results.find(r => r.configuration.database === DATABASE_TYPES.CLICKHOUSE);
+    const pgIndexed = results.find(r => r.configuration.database === DATABASE_TYPES.POSTGRESQL && r.configuration.withIndex);
+    const pgNoIndex = results.find(r => r.configuration.database === DATABASE_TYPES.POSTGRESQL && !r.configuration.withIndex);
     
     console.log('\n💡 Performance Insights:');
     
@@ -143,9 +144,9 @@ export class ResultsReporter {
   }
 
   private static printOverallSummary(results: TestResults[]): void {
-    const ch = results.filter(r => r.configuration.database === 'clickhouse');
-    const pgIndexed = results.filter(r => r.configuration.database === 'postgresql' && r.configuration.withIndex);
-    const pgNoIndex = results.filter(r => r.configuration.database === 'postgresql' && !r.configuration.withIndex);
+    const ch = results.filter(r => r.configuration.database === DATABASE_TYPES.CLICKHOUSE);
+    const pgIndexed = results.filter(r => r.configuration.database === DATABASE_TYPES.POSTGRESQL && r.configuration.withIndex);
+    const pgNoIndex = results.filter(r => r.configuration.database === DATABASE_TYPES.POSTGRESQL && !r.configuration.withIndex);
     
     console.log('🏆 Winner by Category:');
     console.log(`   • Fastest overall queries: ${this.getFastestDatabase(results)}`);
@@ -172,7 +173,7 @@ export class ResultsReporter {
   }
 
   private static getIndexEffectiveness(results: TestResults[]): string {
-    const pgResults = results.filter(r => r.configuration.database === 'postgresql');
+    const pgResults = results.filter(r => r.configuration.database === DATABASE_TYPES.POSTGRESQL);
     const indexed = pgResults.filter(r => r.configuration.withIndex);
     const noIndex = pgResults.filter(r => !r.configuration.withIndex);
     
@@ -233,7 +234,7 @@ export class ResultsReporter {
       if (!result.queryStats) continue;
       
       const config = result.configuration;
-      const dbName = config.database === 'clickhouse' ? 'ClickHouse' : 'PostgreSQL';
+      const dbName = getDatabaseDisplayName(config.database);
       const indexStatus = config.withIndex ? '(indexed)' : '(no index)';
       
       console.log(`\n${dbName} ${indexStatus}${result.timedOut ? ' ⚠️ TIMED OUT' : ''}:`);

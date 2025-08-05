@@ -2,6 +2,33 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as readline from 'readline';
+import { Command } from 'commander';
+import { DATABASE_TYPES } from '../constants/database';
+
+// Configure CLI with Commander.js
+const program = new Command();
+
+program
+  .name('npm run latency-sim')
+  .description('Interactive latency simulator using pre-recorded test data')
+  .version('1.0.0')
+  .option('-d, --output-dir <dir>', 'directory containing test results', 'output')
+  .addHelpText('after', `
+This simulator demonstrates the real-world impact of database performance
+on user experience by using pre-recorded performance statistics from
+actual benchmark tests.
+
+Make sure to run tests first:
+  npm start && npm run query-test
+  
+Examples:
+  npm run latency-sim                        # Use default output directory
+  npm run latency-sim -- --output-dir my-results # Use custom results directory
+`);
+
+// Parse CLI arguments
+program.parse();
+const options = program.opts();
 
 interface DatabaseConfig {
   name: string;
@@ -15,9 +42,9 @@ interface ChatMessage {
 }
 
 class LatencySimulator {
-  private outputDir = path.join(process.cwd(), 'output');
+  private outputDir = path.join(process.cwd(), options.outputDir);
   private databases: DatabaseConfig[] = [
-    { name: 'ClickHouse', key: 'clickhouse' },
+    { name: 'ClickHouse', key: DATABASE_TYPES.CLICKHOUSE },
     { name: 'PostgreSQL (no index)', key: 'postgresql-no-idx' },
     { name: 'PostgreSQL (with index)', key: 'postgresql-idx' }
   ];
@@ -116,9 +143,9 @@ class LatencySimulator {
         
         // Format database key
         let dbKey: string;
-        if (result.configuration.database === 'clickhouse') {
-          dbKey = 'clickhouse';
-        } else if (result.configuration.database === 'postgresql') {
+        if (result.configuration.database === DATABASE_TYPES.CLICKHOUSE) {
+          dbKey = DATABASE_TYPES.CLICKHOUSE;
+        } else if (result.configuration.database === DATABASE_TYPES.POSTGRESQL) {
           dbKey = result.configuration.withIndex ? 'postgresql-idx' : 'postgresql-no-idx';
         } else {
           continue;

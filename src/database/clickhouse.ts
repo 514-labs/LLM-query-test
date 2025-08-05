@@ -123,7 +123,11 @@ export class ClickHouseDatabase {
           rssi Float32,
           timestamp DateTime
         ) ENGINE = MergeTree()
-        ORDER BY (timestamp, hex)
+        -- Optimized ORDER BY: low cardinality filter column first (boolean),
+        -- then aircraft ID for better clustering and uniq(hex) performance,
+        -- finally timestamp for temporal ordering within each aircraft
+        -- This matches Q3/Q4 query patterns: WHERE alt_baro_is_ground = 0 ... uniq(hex) ... GROUP BY timestamp
+        ORDER BY (alt_baro_is_ground, hex, timestamp)
       `
     });
   }

@@ -1,91 +1,84 @@
 # LLM Query Performance Testing
 
-Compares OLAP (ClickHouse) vs OLTP (PostgreSQL) performance using realistic LLM query patterns that simulate progressive data discovery and analysis.
+OLAP (ClickHouse) vs OLTP (PostgreSQL) performance using LLM query patterns.
 
-## Key Results
+**Results**: ClickHouse wins at >50K records (up to 50x faster at 10M). PostgreSQL wins on small datasets.
 
-**Summary**: ClickHouse becomes faster than PostgreSQL at ~50K records and maintains significant advantage at scale (up to 50x faster at 10M records). PostgreSQL with indexes outperforms on small datasets (<25K records).
+📊 **[Results →](RESULTS.md)**
 
-📊 **[Detailed benchmark results →](RESULTS.md)**
+## Prerequisites
 
-## Quick Start
+- [Node.js](https://nodejs.org/) v18+
+- [Docker](https://docs.docker.com/get-docker/) v20+
+- 8GB RAM minimum (16GB recommended for large datasets)
+- 10GB free disk space
+
+## Setup
 
 ```bash
-npm run start-dbs    # Start databases (ClickHouse + 2x PostgreSQL)
-npm install && npm run build
-npm start           # Run full benchmark with data generation
+# Get the code
+git clone https://github.com/514-labs/llm-test.git
+cd llm-test
+
+# Setup and build
+npm install
+npm run build
+
+# Configure (optional - defaults work fine)
+cp .env.example .env
+
+# Run comprehensive bulk test
+npm run bulk-test
 ```
+
+Bulk test runs 9 dataset sizes (5K to 25M records). Configure in `.env` or use `npm start` for single 10M test.
 
 ## Commands
 
-- `npm start` - Full benchmark (data generation + queries)
-- `npm run query-test` - Query-only test with statistical analysis
+- `npm start` - Run Benchmark (data generation + queries)
+- `npm run query-test` - Query-only test with statistical analysis (requires databases running/populated)
 - `npm run bulk-test` - Comprehensive testing across multiple dataset sizes  
-- `npm run graphs` - Generate ASCII performance visualizations
+- `npm run generate-graphs` - Generate performance visualizations
 - `npm run latency-sim` - Interactive LLM conversation delay simulator
 - `npm run clean` - Reset databases and clear results
 
-**Advanced options:**
-```bash
-npm run query-test -- --iterations=50 --time-limit=30  # Custom test parameters
-npm run graphs -- --update-readme                      # Update RESULTS.md with latest data
-npm start --help                                       # Show all options
-```
+CLI options: see `npm run help`. Use `-- --help` for details for a particular command.
 
-## Test Design
+## Data
 
-**Data**: 46-column aircraft tracking records with realistic telemetry (position, altitude, transponder codes, etc.)
+46-column aircraft tracking records (position, altitude, transponder codes). See [Schema Comparison](SCHEMA_COMPARISON.md)
 
-**Query Pattern**: Simulates LLM answering *"How many aircraft are in the air on average every minute for the past hour?"*
+## Query Pattern
 
-1. **Q1**: `SHOW TABLES` - Discovery
-2. **Q2**: `SELECT * LIMIT 10` - Schema exploration  
-3. **Q3**: Hourly aircraft counts with time bucketing and filtering
-4. **Q4**: CTE-based average calculation across time periods
+LLM simulation: "How many aircraft are in the air on average every minute for the past hour?"
+
+1. Q1: Table discovery
+2. Q2: Schema exploration
+3. Q3: Hourly counts
+4. Q4: Average calculation
 
 ## Configuration
 
-**Basic setup:**
-```bash
-cp .env.example .env  # Edit database connections and dataset size
-```
+Key `.env` settings: `BULK_TEST_SIZES`, `DATASET_SIZE`, `BATCH_SIZE`, `PARALLEL_INSERT`, container resources.
 
-**Key settings:**
-- `DATASET_SIZE=1000000` - Number of records to generate
-- `PARALLEL_INSERT=true` - Enable faster data loading
-- `CLICKHOUSE_MEMORY=4g` - Container resource limits
-- `POSTGRES_MEMORY=4g` - Container resource limits
-
-🔧 **[Complete configuration guide →](CONFIGURATION.md)**
+🔧 **[Full config →](CONFIGURATION.md)**
 
 ## Output
 
-Results saved to `output/` directory:
-- `test-results.json` - Detailed timing data with confidence intervals
-- `test-results.csv` - Spreadsheet format for analysis
-- Console output with performance comparisons and insights
+`output/test-results.{json,csv}` with timing data and 95% confidence intervals.
 
 ## Methodology
 
-The benchmark uses scientifically sound testing practices:
+- Deterministic data (seeded)
+- 3x warmup queries
+- 95% CI across 100+ iterations
+- Database-specific optimizations
 
-- **Deterministic data generation** - Seeded random generation for reproducible results
-- **Database warmup** - 3x query execution before timing to eliminate cold-start effects  
-- **Statistical analysis** - 95% confidence intervals, standard deviations across 100+ iterations
-- **Database-specific optimization** - Each database uses native strengths (not artificially identical queries)
-
-🔬 **[Detailed methodology →](BENCHMARK_METHODOLOGY.md)**
+🔬 **[Details →](BENCHMARK_METHODOLOGY.md)** | **[Schema →](SCHEMA_COMPARISON.md)**
 
 ## Troubleshooting
 
-**Common issues:**
-1. Database connection errors → Check containers: `docker ps`
-2. Memory issues → Reduce `DATASET_SIZE` or enable `PARALLEL_INSERT=true`
-3. Port conflicts → Verify ports 8123, 5432, 5433 are available
-
-**Reset everything:**
-```bash
-npm run clean     # Clear databases + results
-npm run kill-dbs  # Remove Docker containers
-npm run start-dbs # Fresh database setup
-```
+- Connection errors: `docker ps`
+- Memory issues: reduce `DATASET_SIZE`
+- Port conflicts: check 8123, 5432, 5433
+- Reset: `npm run clean && npm run kill-dbs && npm run start-dbs`

@@ -13,6 +13,8 @@ build/
 output/
 test-results/
 coverage/
+tests/*.js
+tests/*.js.map
 
 # Environment variables
 .env.local
@@ -53,6 +55,6 @@ temp/
 # Claude Code local settings
 .claude/
 
-# Blog drafts
-blog-outline.md
-schema-comparison.md
+# Internal docs
+BLOG_OUTLINE.md
+CLAUDE.md

@@ -24,7 +24,13 @@
       "mcp__github__get_me",
       "mcp__github__list_issues",
       "Bash(node:*)",
-      "Bash(echo:*)"
+      "Bash(echo:*)",
+      "Bash(mkdir:*)",
+      "Bash(mv:*)",
+      "Bash(grep:*)",
+      "mcp__ide__getDiagnostics",
+      "Bash(cp:*)",
+      "mcp__github__get_file_contents"
     ],
     "deny": []
   }
