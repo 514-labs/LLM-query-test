@@ -74,7 +74,10 @@ export class DataGenerator {
     console.log(`DataGenerator initialized with seed: ${this.seed}`);
   }
 
-  // Helper method to get random number from seeded RNG
+  /**
+   * Helper method to get random number from seeded RNG
+   * @returns Random number between 0 and 1
+   */
   private random(): number {
     return this.rng();
   }
@@ -87,6 +90,12 @@ export class DataGenerator {
     { name: 'ATLANTIC', latRange: [30, 50], lonRange: [-60, -20] }
   ];
 
+  /**
+   * Generate test data for aircraft tracking records
+   * @param rowCount Number of records to generate
+   * @param database Optional database type for timestamp formatting
+   * @returns Array of aircraft tracking records
+   */
   generateTestData(rowCount: number, database?: DatabaseType): AircraftTrackingRecord[] {
     console.log(`Generating ${rowCount.toLocaleString()} aircraft tracking records...`);
     
@@ -111,6 +120,7 @@ export class DataGenerator {
 
   /**
    * Log memory warning for large datasets
+   * @param rowCount Number of records being generated
    */
   private logMemoryWarningForLargeDataset(rowCount: number): void {
     const estimatedMemoryMB = (rowCount * 1024) / (1024 * 1024); // ~1KB per record
@@ -119,6 +129,11 @@ export class DataGenerator {
     }
   }
 
+  /**
+   * Generate aircraft profiles with realistic callsigns and registrations
+   * @param count Number of aircraft to generate
+   * @returns Array of aircraft objects with hex, flight, registration, and category
+   */
   private generateAircraft(count: number) {
     const aircraft = [];
     for (let i = 0; i < count; i++) {
@@ -139,16 +154,28 @@ export class DataGenerator {
     return aircraft;
   }
 
+  /**
+   * Generate a 6-character hexadecimal aircraft identifier
+   * @returns Hex string padded to 6 characters
+   */
   private generateHex(): string {
     return Math.floor(this.random() * 16777215).toString(16).padStart(6, '0');
   }
 
+  /**
+   * Generate aircraft registration with realistic prefix patterns
+   * @returns Registration string (e.g., 'N1234', 'G-ABCD')
+   */
   private generateRegistration(): string {
     const prefix = this.registrationPrefixes[Math.floor(this.random() * this.registrationPrefixes.length)];
     const suffix = Math.floor(this.random() * 99999).toString().padStart(4, '0');
     return `${prefix}${suffix}`;
   }
 
+  /**
+   * Generate transponder squawk code with realistic distribution
+   * @returns 4-digit squawk code as string
+   */
   private generateSquawk(): string {
     // Common squawk codes with realistic distribution
     const common = ['1200', '7000', '2000', '0400'];
@@ -158,6 +185,10 @@ export class DataGenerator {
     return Math.floor(this.random() * 7777).toString().padStart(4, '0');
   }
 
+  /**
+   * Generate navigation modes array with realistic probabilities
+   * @returns Array of active navigation mode strings
+   */
   private generateNavModes(): string[] {
     const modes: string[] = [];
     this.navModes.forEach(mode => {
@@ -166,6 +197,10 @@ export class DataGenerator {
     return modes;
   }
 
+  /**
+   * Generate aircraft type code from common aircraft models
+   * @returns Aircraft type code (e.g., 'B738', 'A320')
+   */
   private generateAircraftType(): string {
     const types = ['B738', 'A320', 'B777', 'A330', 'C172', 'PA28', 'B752', 'E145', 'CRJ2', 'DH8D'];
     return types[Math.floor(this.random() * types.length)];
@@ -173,6 +208,9 @@ export class DataGenerator {
 
   /**
    * Generate timestamp for a given date in the format expected by the database
+   * @param date Date object to convert
+   * @param databaseType Database type for format selection
+   * @returns Formatted timestamp string
    */
   private generateTimestamp(date: Date, databaseType: DatabaseType): string {
     // Both databases now use the same format for consistency
@@ -181,6 +219,11 @@ export class DataGenerator {
 
   /**
    * Generate a single aircraft tracking record with given parameters
+   * @param aircraft Array of aircraft profiles to choose from
+   * @param startDate Start date for time range
+   * @param timeRange Time range in milliseconds
+   * @param databaseType Optional database type for timestamp formatting
+   * @returns Complete aircraft tracking record
    */
   private generateSingleRecord(
     aircraft: any[],
@@ -258,6 +301,8 @@ export class DataGenerator {
 
   /**
    * Setup time range for data generation
+   * @param daysPast Number of days in the past to start from (default: 1)
+   * @returns Object with startDate, endDate, and timeRange in milliseconds
    */
   private setupTimeRange(daysPast: number = 1): { startDate: Date; endDate: Date; timeRange: number } {
     const startDate = new Date(Date.now() - daysPast * 24 * 60 * 60 * 1000);
@@ -268,6 +313,9 @@ export class DataGenerator {
 
   /**
    * Validate memory requirements before generation
+   * @param rowCount Number of records to be generated
+   * @param operation Description of the operation for logging
+   * @throws Error if insufficient memory is available
    */
   private async validateMemoryRequirements(rowCount: number, operation: string): Promise<void> {
     const estimatedMemory = MemoryMonitor.estimateDatasetMemory(rowCount);
@@ -278,6 +326,13 @@ export class DataGenerator {
     }
   }
 
+  /**
+   * Generate and insert data in batches with progress tracking
+   * @param database Database instance to insert into
+   * @param rowCount Total number of records to generate
+   * @param databaseType Type of database for proper formatting
+   * @param batchSize Number of records per batch (default: 50000)
+   */
   async generateAndInsertInBatches(database: any, rowCount: number, databaseType: DatabaseType, batchSize: number = 50000): Promise<void> {
     console.log(`Generating and inserting ${rowCount.toLocaleString()} aircraft records in batches of ${batchSize.toLocaleString()}...`);
     
@@ -299,6 +354,13 @@ export class DataGenerator {
 
   /**
    * Process data generation and insertion in batches
+   * @param database Database instance to insert into
+   * @param rowCount Total number of records to generate
+   * @param databaseType Type of database for proper formatting
+   * @param batchSize Number of records per batch
+   * @param aircraft Array of aircraft profiles
+   * @param startDate Start date for time range
+   * @param timeRange Time range in milliseconds
    */
   private async processBatchesSequentially(
     database: any,
@@ -331,6 +393,12 @@ export class DataGenerator {
 
   /**
    * Generate a batch of records
+   * @param batchSize Number of records to generate in this batch
+   * @param aircraft Array of aircraft profiles to choose from
+   * @param startDate Start date for time range
+   * @param timeRange Time range in milliseconds
+   * @param databaseType Database type for timestamp formatting
+   * @returns Array of aircraft tracking records
    */
   private generateBatch(
     batchSize: number,
@@ -351,6 +419,8 @@ export class DataGenerator {
 
   /**
    * Check memory usage every 5 batches
+   * @param currentBatch Current batch number being processed
+   * @throws Error if critical memory usage is detected
    */
   private checkMemoryUsageEveryFewBatches(currentBatch: number): void {
     if (currentBatch % 5 === 0) {
@@ -364,6 +434,12 @@ export class DataGenerator {
 
   /**
    * Log progress for each batch
+   * @param currentBatch Current batch number
+   * @param totalBatches Total number of batches
+   * @param rowCount Total number of records being processed
+   * @param progress Number of records processed so far
+   * @param batchStartTime Start time of current batch
+   * @param overallStartTime Start time of entire operation
    */
   private logBatchProgress(
     currentBatch: number,
@@ -386,6 +462,11 @@ export class DataGenerator {
     console.log(`Batch ${currentBatch}/${totalBatches}: ${actualProgress.toLocaleString()}/${rowCount.toLocaleString()} records (${this.formatTime(batchDuration)}) | Elapsed: ${this.formatTime(totalElapsed)} | ETA: ${this.formatTime(estimatedRemaining)}`);
   }
 
+  /**
+   * Format time duration in a human-readable format
+   * @param ms Time in milliseconds
+   * @returns Formatted time string (e.g., '1m 30s', '2.5s')
+   */
   private formatTime(ms: number): string {
     if (ms < 1000) return `${ms}ms`;
     if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
@@ -395,6 +476,9 @@ export class DataGenerator {
 
   /**
    * Validate memory requirements for parallel insertion
+   * @param batchSize Number of records per batch
+   * @param parallelWorkers Number of parallel workers
+   * @throws Error if insufficient memory is available
    */
   private async validateParallelMemoryRequirements(batchSize: number, parallelWorkers: number): Promise<void> {
     const chunkSize = Math.min(500000, Math.max(batchSize * parallelWorkers * 2, 100000));
@@ -408,6 +492,9 @@ export class DataGenerator {
 
   /**
    * Validate memory requirements for multi-database insertion
+   * @param batchSize Number of records per batch
+   * @param parallelWorkers Number of parallel workers
+   * @throws Error if insufficient memory is available
    */
   private async validateMultiDBMemoryRequirements(batchSize: number, parallelWorkers: number): Promise<void> {
     const chunkSize = Math.min(500000, Math.max(batchSize * parallelWorkers * 2, 100000));
@@ -420,7 +507,14 @@ export class DataGenerator {
   }
 
 
-  // New parallel insertion method
+  /**
+   * Generate and insert data using parallel processing with fallback to sequential
+   * @param database Database instance to insert into
+   * @param rowCount Total number of records to generate
+   * @param databaseType Type of database for proper formatting
+   * @param batchSize Number of records per batch (default: 50000)
+   * @param parallelWorkers Number of parallel workers (default: 4)
+   */
   async generateAndInsertInBatchesParallel(
     database: any, 
     rowCount: number, 
@@ -443,7 +537,13 @@ export class DataGenerator {
     }
   }
 
-  // New sequential insertion method for multiple database configurations
+  /**
+   * Generate and insert data sequentially across multiple database configurations
+   * @param databases Array of database configurations to insert into
+   * @param rowCount Total number of records to generate per database
+   * @param batchSize Number of records per batch (default: 50000)
+   * @param parallelWorkers Number of parallel workers per database (default: 4)
+   */
   async generateAndInsertInBatchesSequentialMultiDB(
     databases: { database: any; databaseType: DatabaseType; withIndex?: boolean }[],
     rowCount: number,

@@ -1,3 +1,6 @@
+/**
+ * Interface for query execution results
+ */
 export interface QueryResult {
   name: string;
   duration: number;
@@ -5,6 +8,10 @@ export interface QueryResult {
   data?: any[];
 }
 
+/**
+ * Generate LLM-style query definitions for performance testing
+ * @returns Object containing queries for different database types
+ */
 export function getQueries() {
   const currentTime = new Date();
   
@@ -101,6 +108,14 @@ export function getQueries() {
   };
 }
 
+/**
+ * Execute a query against a database and measure performance
+ * @param database Database instance to execute query on
+ * @param query SQL query string to execute
+ * @param queryName Descriptive name for the query
+ * @param silent Whether to suppress console output (default: false)
+ * @returns Promise that resolves to QueryResult with timing and row count
+ */
 export async function executeQuery(database: any, query: string, queryName: string, silent: boolean = false): Promise<QueryResult> {
   if (!silent) {
     console.log(`Executing ${queryName}...`);

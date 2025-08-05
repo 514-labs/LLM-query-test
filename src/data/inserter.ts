@@ -19,22 +19,35 @@ export interface InsertResult {
   duration: number;
 }
 
+/**
+ * Parallel insertion class that manages worker threads for database operations
+ */
 export class ParallelInserter {
   private workers: Worker[] = [];
   private workerPool: Worker[] = [];
   private maxWorkers: number;
   private createdWorkers = 0;
   
+  /**
+   * Initialize parallel inserter with specified worker count
+   * @param workerCount Number of worker threads to use (default: 4)
+   */
   constructor(private workerCount: number = 4) {
     this.maxWorkers = workerCount;
     Logger.verbose(`Initializing parallel inserter with up to ${workerCount} workers`);
   }
 
+  /**
+   * Initialize the parallel inserter (workers created on-demand)
+   */
   async initialize(): Promise<void> {
     Logger.verbose(`Parallel inserter ready (lazy worker creation enabled)`);
     // Workers will be created on-demand to save memory
   }
 
+  /**
+   * Clean up all worker threads and resources
+   */
   async cleanup(): Promise<void> {
     // Terminate all workers
     await Promise.all(this.workers.map(worker => worker.terminate()));
@@ -43,6 +56,11 @@ export class ParallelInserter {
     this.workerPool = [];
   }
 
+  /**
+   * Create a new worker thread with proper path resolution
+   * @returns Promise that resolves to initialized Worker
+   * @throws Error if worker creation fails
+   */
   private async createWorker(): Promise<Worker> {
     const fs = require('fs');
     
@@ -101,6 +119,14 @@ export class ParallelInserter {
     });
   }
 
+  /**
+   * Insert records in parallel using worker threads
+   * @param records Array of records to insert
+   * @param database Database type for insertion
+   * @param batchSize Number of records per batch (default: 50000)
+   * @param suppressOutput Whether to suppress progress output (default: false)
+   * @param dbConfig Optional database configuration
+   */
   async insertBatchParallel(
     records: AircraftTrackingRecord[], 
     database: DatabaseType,
@@ -177,6 +203,14 @@ export class ParallelInserter {
     }
   }
 
+  /**
+   * Process a single batch using an available worker
+   * @param records Records to insert in this batch
+   * @param database Database type for insertion
+   * @param jobId Unique identifier for this job
+   * @param dbConfig Optional database configuration
+   * @returns Promise that resolves to insertion result
+   */
   private async processBatch(
     records: AircraftTrackingRecord[], 
     database: DatabaseType,
@@ -223,6 +257,11 @@ export class ParallelInserter {
     });
   }
 
+  /**
+   * Get an available worker from the pool or create a new one
+   * @returns Promise that resolves to available Worker
+   * @throws Error if worker creation fails
+   */
   private async getAvailableWorker(): Promise<Worker> {
     // If we have available workers in the pool, use one
     if (this.workerPool.length > 0) {
@@ -250,6 +289,10 @@ export class ParallelInserter {
     return this.workerPool.shift()!;
   }
 
+  /**
+   * Release a worker back to the pool for reuse
+   * @param worker Worker to release back to pool
+   */
   private releaseWorker(worker: Worker): void {
     if (!this.workerPool.includes(worker)) {
       this.workerPool.push(worker);
@@ -257,7 +300,14 @@ export class ParallelInserter {
   }
 }
 
-// Parallel generation and insertion method
+/**
+ * Generate and insert data using parallel processing with progress tracking
+ * @param rowCount Total number of records to generate and insert
+ * @param databaseType Type of database for proper formatting
+ * @param batchSize Number of records per batch (default: 50000)
+ * @param workerCount Number of worker threads (default: 4)
+ * @param seed Seed for deterministic data generation (default: 'default-benchmark-seed')
+ */
 export async function generateAndInsertParallel(
   rowCount: number,
   databaseType: DatabaseType,
@@ -307,6 +357,9 @@ export async function generateAndInsertParallel(
 
 /**
  * Setup progress reporter for parallel insertion
+ * @param rowCount Total number of records for progress tracking
+ * @param databaseType Database type for progress label
+ * @returns Configured ProgressReporter instance
  */
 function setupProgressReporter(rowCount: number, databaseType: DatabaseType): ProgressReporter {
   return new ProgressReporter({
@@ -319,7 +372,8 @@ function setupProgressReporter(rowCount: number, databaseType: DatabaseType): Pr
 }
 
 /**
- * Setup graceful shutdown handling
+ * Setup graceful shutdown handling for process interruption
+ * @returns Object with shutdown state and handler function
  */
 function setupGracefulShutdown(): { shutdownRequested: { value: boolean }, handleShutdown: () => void } {
   const shutdownRequested = { value: false };
@@ -338,6 +392,9 @@ function setupGracefulShutdown(): { shutdownRequested: { value: boolean }, handl
 
 /**
  * Prepare generation context (aircraft pool and time range)
+ * @param seed Seed for deterministic data generation
+ * @param rowCount Total number of records (used for aircraft pool sizing)
+ * @returns Promise that resolves to generation context object
  */
 async function prepareGenerationContext(seed: string, rowCount: number): Promise<{
   startDate: Date;
@@ -361,6 +418,16 @@ async function prepareGenerationContext(seed: string, rowCount: number): Promise
 
 /**
  * Process chunks in parallel with progress tracking
+ * @param inserter ParallelInserter instance for database operations
+ * @param context Generation context with aircraft pool and time range
+ * @param rowCount Total number of records to process
+ * @param databaseType Database type for proper formatting
+ * @param batchSize Number of records per batch
+ * @param workerCount Number of worker threads
+ * @param startTime Start time for rate calculation
+ * @param progress ProgressReporter instance for tracking
+ * @param shutdownRequested Shutdown state object
+ * @returns Promise that resolves to number of processed records
  */
 async function processChunksInParallel(
   inserter: ParallelInserter,
@@ -409,6 +476,10 @@ async function processChunksInParallel(
 
 /**
  * Generate records for a single chunk
+ * @param currentChunkSize Number of records to generate in this chunk
+ * @param context Generation context with aircraft pool and time range
+ * @param databaseType Database type for timestamp formatting
+ * @returns Array of generated aircraft tracking records
  */
 function generateChunkRecords(
   currentChunkSize: number,
@@ -490,6 +561,10 @@ function generateChunkRecords(
 
 /**
  * Finalize parallel insertion with completion status
+ * @param progress ProgressReporter instance to complete
+ * @param processedRecords Number of records actually processed
+ * @param rowCount Total number of records requested
+ * @param shutdownRequested Shutdown state object
  */
 function finalizParallelInsertion(
   progress: ProgressReporter,
@@ -506,7 +581,13 @@ function finalizParallelInsertion(
   }
 }
 
-// Multi-database sequential insertion with individual progress bars
+/**
+ * Multi-database sequential insertion with individual progress bars
+ * @param databases Array of database configurations to insert into
+ * @param rowCount Number of records to insert into each database
+ * @param batchSize Number of records per batch (default: 50000)
+ * @param workerCount Number of worker threads per database (default: 4)
+ */
 export async function generateAndInsertSequentialWithMultiBar(
   databases: { database: any; databaseType: DatabaseType; withIndex?: boolean }[],
   rowCount: number,
@@ -551,6 +632,7 @@ export async function generateAndInsertSequentialWithMultiBar(
 
 /**
  * Setup shutdown handling for multi-database operations
+ * @returns Object with shutdown state and handler function
  */
 function setupMultiDBShutdownHandling(): { shutdownRequested: { value: boolean }, handleShutdown: () => void } {
   const shutdownRequested = { value: false };
@@ -568,6 +650,7 @@ function setupMultiDBShutdownHandling(): { shutdownRequested: { value: boolean }
 
 /**
  * Prepare context for multi-database generation
+ * @returns Promise that resolves to generation context object
  */
 async function prepareMultiDBContext(): Promise<{
   startDate: Date;
@@ -589,6 +672,7 @@ async function prepareMultiDBContext(): Promise<{
 
 /**
  * Initialize all databases before processing
+ * @param databases Array of database configurations to initialize
  */
 async function initializeDatabases(databases: { database: any; databaseType: DatabaseType; withIndex?: boolean }[]): Promise<void> {
   console.log('Initializing databases...');
@@ -614,6 +698,15 @@ async function initializeDatabases(databases: { database: any; databaseType: Dat
 
 /**
  * Process all databases sequentially with progress tracking
+ * @param databases Array of database configurations to process
+ * @param displayNames Array of display names for progress bars
+ * @param context Generation context with aircraft pool and time range
+ * @param rowCount Number of records to insert into each database
+ * @param batchSize Number of records per batch
+ * @param workerCount Number of worker threads per database
+ * @param shutdownRequested Shutdown state object
+ * @param completionTimes Array to store completion times
+ * @param finalBars Array to store final progress bar representations
  */
 async function processAllDatabasesSequentially(
   databases: { database: any; databaseType: DatabaseType; withIndex?: boolean }[],
@@ -667,6 +760,10 @@ async function processAllDatabasesSequentially(
 
 /**
  * Create progress bar for a database
+ * @param cliProgress cli-progress module instance
+ * @param dbName Display name for the database
+ * @param rowCount Total number of records for progress tracking
+ * @returns Configured progress bar instance
  */
 function createProgressBar(cliProgress: any, dbName: string, rowCount: number): any {
   const progressBar = new cliProgress.SingleBar({
@@ -690,6 +787,16 @@ function createProgressBar(cliProgress: any, dbName: string, rowCount: number): 
 
 /**
  * Process a single database in chunks
+ * @param inserter ParallelInserter instance for database operations
+ * @param context Generation context with aircraft pool and time range
+ * @param rowCount Total number of records to process
+ * @param databaseType Database type for proper formatting
+ * @param batchSize Number of records per batch
+ * @param workerCount Number of worker threads
+ * @param dbConfig Database configuration for workers
+ * @param shutdownRequested Shutdown state object
+ * @param progressBar Progress bar instance for this database
+ * @param startTime Start time for rate calculation
  */
 async function processSingleDatabaseInChunks(
   inserter: ParallelInserter,
@@ -720,6 +827,10 @@ async function processSingleDatabaseInChunks(
 
 /**
  * Update progress bar with current status
+ * @param progressBar Progress bar instance to update
+ * @param processedRecords Number of records processed so far
+ * @param rowCount Total number of records
+ * @param startTime Start time for rate and ETA calculation
  */
 function updateProgressBar(progressBar: any, processedRecords: number, rowCount: number, startTime: number): void {
   const elapsed = Date.now() - startTime;
@@ -737,6 +848,9 @@ function updateProgressBar(progressBar: any, processedRecords: number, rowCount:
 
 /**
  * Finalize progress bar with final status
+ * @param progressBar Progress bar instance to finalize
+ * @param rowCount Total number of records processed
+ * @param completionTimeMs Total time taken in milliseconds
  */
 function finalizeProgressBar(progressBar: any, rowCount: number, completionTimeMs: number): void {
   const finalRate = rowCount / (completionTimeMs / 1000);
@@ -750,6 +864,12 @@ function finalizeProgressBar(progressBar: any, rowCount: number, completionTimeM
 
 /**
  * Display final results summary
+ * @param shutdownRequested Shutdown state object
+ * @param finalBars Array of final progress bar representations
+ * @param rowCount Number of records processed per database
+ * @param databaseCount Total number of databases processed
+ * @param displayNames Array of database display names
+ * @param completionTimes Array of completion times in milliseconds
  */
 function displayFinalResults(
   shutdownRequested: { value: boolean },
@@ -778,6 +898,8 @@ function displayFinalResults(
 
 /**
  * Format time in mm:ss format
+ * @param seconds Time in seconds
+ * @returns Formatted time string (e.g., '1:30', '45s')
  */
 function formatTimeInMinSec(seconds: number): string {
   if (seconds < 60) return `${Math.round(seconds)}s`;
@@ -786,7 +908,15 @@ function formatTimeInMinSec(seconds: number): string {
   return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
 }
 
-// Helper function to generate records for a chunk
+/**
+ * Helper function to generate records for a chunk
+ * @param chunkSize Number of records to generate
+ * @param startDate Start date for time range
+ * @param timeRange Time range in milliseconds
+ * @param aircraft Array of aircraft profiles to choose from
+ * @param generator Data generator instance
+ * @returns Array of generated aircraft tracking records
+ */
 function generateRecordsForChunk(
   chunkSize: number,
   startDate: Date,
@@ -864,7 +994,11 @@ function generateRecordsForChunk(
   return records;
 }
 
-// Helper function for number formatting
+/**
+ * Helper function for number formatting with K/M suffixes
+ * @param num Number to format
+ * @returns Formatted number string (e.g., '1.5K', '2.3M')
+ */
 function formatNumber(num: number): string {
   if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
   if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
