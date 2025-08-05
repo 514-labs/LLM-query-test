@@ -2,27 +2,21 @@
 
 OLAP (ClickHouse) vs OLTP (PostgreSQL) performance benchmarking using LLM-style query patterns.
 
-This repo provides:
-
-1. A benchmarking tool for ClickHouse v Postgres comparison at different row counts: `npm run bulk-test`.
-2. A results visualizer: `npm run generate-graphs`
-3. A latency simulator, showing how a chat interface would feel given benchmark results: `npm run latency-sim`.
+**Purpose**: Measure the experiential impact of database performance on LLM chat interactions. Unlike [traditional benchmarks](https://benchmark.clickhouse.com/) focused on raw performance metrics, this tool demonstrates how query latency affects the user experience of AI-powered data conversations.
 
 ![Latency Simulation](latency-sim-10m.gif)
 
 The above chat shows the resulting chat performance, at 10m rows, of Postgres (unindexed) and ClickHouse. 
 
 📊 **[Results →](RESULTS.md)**
-**Results**: ClickHouse wins at >50K records (up to 50x faster at 10M). PostgreSQL wins on small datasets.
+**Results**: ClickHouse is faster on datasets >50K records (up to 16.8x faster at 10M records). 
 
-This repo ships with the benchmarking, viz and chat sim apps, as well as results for tests run from 10k to 10m rows (see [Benchmarking Methodology](BENCHMARK_METHODOLOGY.md) for how those tests were run). 
+This repo ships with results for tests run from 10k to 10m rows (see [Benchmarking Methodology](BENCHMARK_METHODOLOGY.md) for how those tests were run). 
 
 ## Prerequisites
 
 - [Node.js](https://nodejs.org/) v18+
 - [Docker](https://docs.docker.com/get-docker/) v20+
-- 8GB RAM minimum (16GB recommended for large datasets)
-- 10GB free disk space
 
 ## Setup
 
