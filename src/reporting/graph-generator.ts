@@ -910,16 +910,6 @@ export class ASCIIGraphGenerator {
         { db: results.find(r => r.configuration.database === DATABASE_TYPES.POSTGRESQL && r.configuration.withIndex), label: 'PG w/Idx' }
       ];
       
-      // Calculate totals for finding winner (per dataset size)
-      const totals = databases
-        .filter(({ db }) => db && db.queryResults)
-        .map(({ db, label }) => ({
-          label,
-          total: db!.queryResults.reduce((sum, q) => sum + (q?.duration || 0), 0)
-        }));
-      
-      const minTotal = totals.length > 0 ? Math.min(...totals.map(t => t.total)) : 0;
-      
       databases.forEach(({ db, label }) => {
         if (!db || !db.queryResults) return;
         
@@ -941,11 +931,8 @@ export class ASCIIGraphGenerator {
         const q4Bar = '░'.repeat(q4Length);
         
         const fullLabel = `${size} ${label}`.padEnd(12);
-        const isWinner = Math.abs(total - minTotal) < 0.01;
-        const color = isWinner ? '\x1b[32m' : '';  // Green for winner
-        const reset = isWinner ? '\x1b[0m' : '';
-        
-        output += `  ${color}${fullLabel}${reset} │${q1Bar}${q2Bar}${q3Bar}${q4Bar} ${color}${total.toFixed(1)} ms${reset}\n`;
+        // No colors for markdown output
+        output += `  ${fullLabel} │${q1Bar}${q2Bar}${q3Bar}${q4Bar} ${total.toFixed(1)} ms\n`;
       });
       
       output += '\n'; // Empty line between dataset sizes
