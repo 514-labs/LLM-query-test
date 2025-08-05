@@ -31,7 +31,8 @@ export class ASCIIGraphGenerator {
 
     console.log('\n⚡ Query Performance Across Dataset Sizes');
     console.log('-'.repeat(50));
-    this.generateDatasetSizeComparison(resultsBySize);
+    const graphOutput = this.generateDatasetSizeComparison(resultsBySize);
+    console.log(graphOutput);
 
     if (updateResults) {
       console.log('\n📝 Updating RESULTS.md...');
@@ -308,7 +309,8 @@ export class ASCIIGraphGenerator {
     return result;
   }
 
-  private static generateDatasetSizeComparison(resultsBySize: Record<string, TestResults[]>): void {
+  private static generateDatasetSizeComparison(resultsBySize: Record<string, TestResults[]>): string {
+    let output = '';
     // Sort sizes numerically
     const sortedSizes = Object.keys(resultsBySize).sort((a, b) => {
       const aNum = this.parseDatasetSize(a);
@@ -317,13 +319,12 @@ export class ASCIIGraphGenerator {
     });
 
     if (sortedSizes.length === 0) {
-      console.log('No results to display');
-      return;
+      return 'No results to display';
     }
 
     // Show overview table
-    console.log('\n📊 Performance Overview by Dataset Size');
-    console.log('-'.repeat(80));
+    output += '\n📊 Performance Overview by Dataset Size\n';
+    output += '-'.repeat(80) + '\n';
     
     // Create headers
     const headers = ['Size', 'ClickHouse (ms)', 'PostgreSQL+Idx (ms)', 'PostgreSQL (ms)', 'CH Advantage'];
@@ -349,16 +350,16 @@ export class ASCIIGraphGenerator {
       rows.push([size, chTime, pgIdxTime, pgNoIdxTime, advantage]);
     }
 
-    this.printTable(rows);
+    output += this.formatTableAsString(rows);
 
     // Generate individual graphs for each query type
-    console.log('\n📈 Query Type Breakdown');
-    console.log('-'.repeat(50));
+    output += '\n📈 Query Type Breakdown\n';
+    output += '-'.repeat(50) + '\n';
     
     const queryNames = ['Q1 (metadata)', 'Q2 (sample)', 'Q3 (analytical)', 'Q4 (analytical)'];
     
     for (let queryIndex = 0; queryIndex < 4; queryIndex++) {
-      console.log(`\n${queryNames[queryIndex]}:`);
+      output += `\n${queryNames[queryIndex]}:\n`;
       
       const graphData: Array<{label: string, value: number}> = [];
       
@@ -391,13 +392,32 @@ export class ASCIIGraphGenerator {
       }
       
       if (graphData.length > 0) {
-        this.createHorizontalBarChart(graphData, 'Time (ms)', 60, true);
+        output += this.formatHorizontalBarChart(graphData, 'Time (ms)', 60, true);
       }
     }
     
     // Add total section with stacked bars
-    console.log('\nTotal (all queries combined):');
-    console.log('Legend: █ Q1 ▓ Q2 ▒ Q3 ░ Q4');
+    output += '\nTotal (all queries combined):\n';
+    output += 'Legend: █ Q1 ▓ Q2 ▒ Q3 ░ Q4\n';
+    
+    // Calculate global max across ALL dataset sizes for consistent scaling
+    let globalMaxTotal = 0;
+    for (const size of sortedSizes) {
+      const results = resultsBySize[size];
+      const databases = [
+        { db: results.find(r => r.configuration.database === DATABASE_TYPES.CLICKHOUSE), label: 'CH' },
+        { db: results.find(r => r.configuration.database === DATABASE_TYPES.POSTGRESQL && !r.configuration.withIndex), label: 'PG' },
+        { db: results.find(r => r.configuration.database === DATABASE_TYPES.POSTGRESQL && r.configuration.withIndex), label: 'PG w/Idx' }
+      ];
+      
+      const sizeMaxTotal = Math.max(...databases
+        .filter(d => d.db && d.db.queryResults)
+        .map(d => d.db!.queryResults.reduce((sum, q) => sum + (q?.duration || 0), 0))
+      );
+      globalMaxTotal = Math.max(globalMaxTotal, sizeMaxTotal);
+    }
+    
+    const globalScale = globalMaxTotal > 0 ? 50 / globalMaxTotal : 0;
     
     for (const size of sortedSizes) {
       const results = resultsBySize[size];
@@ -407,7 +427,7 @@ export class ASCIIGraphGenerator {
         { db: results.find(r => r.configuration.database === DATABASE_TYPES.POSTGRESQL && r.configuration.withIndex), label: 'PG w/Idx' }
       ];
       
-      // Calculate totals for finding winner
+      // Calculate totals for finding winner (per dataset size)
       const totals = databases
         .filter(({ db }) => db && db.queryResults)
         .map(({ db, label }) => ({
@@ -426,17 +446,11 @@ export class ASCIIGraphGenerator {
         const q4 = db.queryResults[3]?.duration || 0;
         const total = q1 + q2 + q3 + q4;
         
-        // Calculate bar lengths (60 chars max width)
-        const maxTotal = Math.max(...databases
-          .filter(d => d.db && d.db.queryResults)
-          .map(d => d.db!.queryResults.reduce((sum, q) => sum + (q?.duration || 0), 0))
-        );
-        
-        const scale = maxTotal > 0 ? 50 / maxTotal : 0;
-        const q1Length = Math.round(q1 * scale);
-        const q2Length = Math.round(q2 * scale);
-        const q3Length = Math.round(q3 * scale);
-        const q4Length = Math.round(q4 * scale);
+        // Use global scale for consistent x-axis normalization
+        const q1Length = Math.round(q1 * globalScale);
+        const q2Length = Math.round(q2 * globalScale);
+        const q3Length = Math.round(q3 * globalScale);
+        const q4Length = Math.round(q4 * globalScale);
         
         const q1Bar = '█'.repeat(q1Length);
         const q2Bar = '▓'.repeat(q2Length);
@@ -448,11 +462,13 @@ export class ASCIIGraphGenerator {
         const color = isWinner ? '\x1b[32m' : '';  // Green for winner
         const reset = isWinner ? '\x1b[0m' : '';
         
-        console.log(`  ${color}${fullLabel}${reset} │${q1Bar}${q2Bar}${q3Bar}${q4Bar} ${color}${total.toFixed(1)} ms${reset}`);
+        output += `  ${color}${fullLabel}${reset} │${q1Bar}${q2Bar}${q3Bar}${q4Bar} ${color}${total.toFixed(1)} ms${reset}\n`;
       });
       
-      console.log(''); // Empty line between dataset sizes
+      output += '\n'; // Empty line between dataset sizes
     }
+    
+    return output;
   }
 
   private static parseDatasetSize(size: string): number {
@@ -468,6 +484,98 @@ export class ASCIIGraphGenerator {
       case 'B': return num * 1000000000;
       default: return num;
     }
+  }
+
+  private static formatTableAsString(data: string[][]): string {
+    if (data.length === 0) return '';
+
+    let output = '';
+
+    // Calculate column widths
+    const columnWidths = data[0].map((_, colIndex) => 
+      Math.max(...data.map(row => String(row[colIndex] || '').length))
+    );
+
+    const formatRow = (row: string[], separator = ' ') => {
+      const formattedRow = row.map((cell, index) => 
+        String(cell || '').padEnd(columnWidths[index])
+      ).join(separator + '|' + separator);
+      return '|' + separator + formattedRow + separator + '|\n';
+    };
+
+    // Print header
+    const horizontalLine = '+' + columnWidths.map(width => 
+      '-'.repeat(width + 2)
+    ).join('+') + '+\n';
+    
+    output += horizontalLine;
+    output += formatRow(data[0]);
+    output += horizontalLine;
+    
+    // Print data rows
+    for (let i = 1; i < data.length; i++) {
+      output += formatRow(data[i]);
+    }
+    output += horizontalLine;
+
+    return output;
+  }
+
+  private static formatHorizontalBarChart(
+    data: Array<{label: string, value: number, setupTime?: number, timedOut?: boolean}>,
+    unit: string,
+    maxBarLength: number = 40,
+    highlightWinner: boolean = false
+  ): string {
+    if (data.length === 0) return '';
+
+    let output = '';
+    const maxValue = Math.max(...data.map(d => d.value));
+    const maxLabelLength = Math.max(...data.map(d => d.label.length));
+    
+    // Find winner(s) for highlighting - group by dataset size first
+    let winners: Set<string> = new Set();
+    if (highlightWinner) {
+      const sizeGroups: Record<string, Array<{label: string, value: number}>> = {};
+      data.forEach(item => {
+        const sizeMatch = item.label.match(/^(\d+[KMB]?)\s/);
+        if (sizeMatch) {
+          const size = sizeMatch[1];
+          if (!sizeGroups[size]) sizeGroups[size] = [];
+          sizeGroups[size].push(item);
+        }
+      });
+      
+      // Find winner for each size group
+      Object.values(sizeGroups).forEach(group => {
+        const minValue = Math.min(...group.map(g => g.value));
+        group.filter(g => g.value === minValue).forEach(winner => {
+          winners.add(winner.label);
+        });
+      });
+    }
+
+    data.forEach(item => {
+      const barLength = maxValue > 0 ? Math.round((item.value / maxValue) * maxBarLength) : 0;
+      const bar = '█'.repeat(barLength);
+      const padding = ' '.repeat(Math.max(0, maxLabelLength - item.label.length));
+      const timeoutFlag = item.timedOut ? ' ⚠️' : '';
+      
+      // Highlight winner with green color
+      const isWinner = winners.has(item.label);
+      const labelColor = isWinner ? '\x1b[32m' : '';  // Green for winner
+      const resetColor = isWinner ? '\x1b[0m' : '';
+      
+      output += `  ${labelColor}${item.label}${padding}${resetColor} │${bar.padEnd(maxBarLength)} ${labelColor}${item.value.toFixed(1)} ${unit}${resetColor}${timeoutFlag}\n`;
+      
+      // Show setup time if provided
+      if (item.setupTime && item.setupTime > 0) {
+        const setupBar = '▓'.repeat(Math.min(Math.round((item.setupTime / maxValue) * maxBarLength), maxBarLength));
+        output += `  ${' '.repeat(maxLabelLength)} │${setupBar.padEnd(maxBarLength)} ${item.setupTime.toFixed(1)} s (setup)\n`;
+      }
+    });
+
+    return output;
   }
 
   private static printTable(data: string[][]): void {
@@ -689,11 +797,14 @@ export class ASCIIGraphGenerator {
       // Generate the benchmark results content
       const benchmarkContent = this.generateDetailedBenchmarkContent(files);
       
+      // Generate performance graphs for the latest results
+      const performanceGraphs = this.generatePerformanceGraphsContent(files);
+      
       // Replace the section content
       const beforeResults = resultsContent.substring(0, resultsSectionStart);
       const afterResults = resultsContent.substring(nextSectionStart);
       
-      const newContent = beforeResults + '## Detailed Results by Dataset Size\n\n' + benchmarkContent + '\n' + afterResults;
+      const newContent = beforeResults + '## Detailed Results by Dataset Size\n\n' + performanceGraphs + '\n' + benchmarkContent + '\n' + afterResults;
       
       // Write back to RESULTS.md
       fs.writeFileSync(this.RESULTS_PATH, newContent);
@@ -703,6 +814,133 @@ export class ASCIIGraphGenerator {
       console.log(`❌ Failed to update RESULTS.md: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
+
+  private static generatePerformanceGraphsContent(files: Array<{name: string, path: string}>): string {
+    // Get latest results for each dataset size
+    const resultsBySize = this.getResultsByDatasetSize(files);
+    
+    if (Object.keys(resultsBySize).length === 0) {
+      return '### Performance Overview\n\nNo results available for performance graphs.\n\n';
+    }
+
+    // Generate just the summary table and total section for markdown
+    const summaryContent = this.generateSummaryForMarkdown(resultsBySize);
+    
+    // Wrap in markdown formatting
+    let content = '### Performance Overview\n\n';
+    content += '```\n';
+    content += summaryContent;
+    content += '```\n\n';
+
+    return content;
+  }
+
+  private static generateSummaryForMarkdown(resultsBySize: Record<string, TestResults[]>): string {
+    let output = '';
+    
+    // Sort sizes numerically
+    const sortedSizes = Object.keys(resultsBySize).sort((a, b) => {
+      const aNum = this.parseDatasetSize(a);
+      const bNum = this.parseDatasetSize(b);
+      return aNum - bNum;
+    });
+
+    if (sortedSizes.length === 0) {
+      return 'No results to display';
+    }
+
+    // Show overview table
+    output += '📊 Performance Overview by Dataset Size\n';
+    output += '-'.repeat(80) + '\n';
+    
+    // Create headers
+    const headers = ['Size', 'ClickHouse (ms)', 'PostgreSQL+Idx (ms)', 'PostgreSQL (ms)', 'CH Advantage'];
+    const rows = [headers];
+
+    for (const size of sortedSizes) {
+      const results = resultsBySize[size];
+      const ch = results.find(r => r.configuration.database === DATABASE_TYPES.CLICKHOUSE);
+      const pgIdx = results.find(r => r.configuration.database === DATABASE_TYPES.POSTGRESQL && r.configuration.withIndex);
+      const pgNoIdx = results.find(r => r.configuration.database === DATABASE_TYPES.POSTGRESQL && !r.configuration.withIndex);
+
+      const chTime = ch ? ch.totalQueryTime.toFixed(1) : 'N/A';
+      const pgIdxTime = pgIdx ? pgIdx.totalQueryTime.toFixed(1) : 'N/A';
+      const pgNoIdxTime = pgNoIdx ? pgNoIdx.totalQueryTime.toFixed(1) : 'N/A';
+      
+      let advantage = 'N/A';
+      if (ch && pgIdx) {
+        const ratio = pgIdx.totalQueryTime / ch.totalQueryTime;
+        advantage = ratio > 1.2 ? `${ratio.toFixed(1)}x faster` : 
+                   ratio < 0.8 ? `${(1/ratio).toFixed(1)}x slower` : 'Similar';
+      }
+
+      rows.push([size, chTime, pgIdxTime, pgNoIdxTime, advantage]);
+    }
+
+    output += this.formatTableAsString(rows);
+
+    // Add total section with stacked bars (same as before)
+    output += '\nTotal (all queries combined):\n';
+    output += 'Legend: █ Q1 ▓ Q2 ▒ Q3 ░ Q4\n';
+    
+    // Calculate global max across ALL dataset sizes for consistent scaling
+    let globalMaxTotal = 0;
+    for (const size of sortedSizes) {
+      const results = resultsBySize[size];
+      const databases = [
+        { db: results.find(r => r.configuration.database === DATABASE_TYPES.CLICKHOUSE), label: 'CH' },
+        { db: results.find(r => r.configuration.database === DATABASE_TYPES.POSTGRESQL && !r.configuration.withIndex), label: 'PG' },
+        { db: results.find(r => r.configuration.database === DATABASE_TYPES.POSTGRESQL && r.configuration.withIndex), label: 'PG w/Idx' }
+      ];
+      
+      const sizeMaxTotal = Math.max(...databases
+        .filter(d => d.db && d.db.queryResults)
+        .map(d => d.db!.queryResults.reduce((sum, q) => sum + (q?.duration || 0), 0))
+      );
+      globalMaxTotal = Math.max(globalMaxTotal, sizeMaxTotal);
+    }
+    
+    const globalScale = globalMaxTotal > 0 ? 50 / globalMaxTotal : 0;
+    
+    for (const size of sortedSizes) {
+      const results = resultsBySize[size];
+      const databases = [
+        { db: results.find(r => r.configuration.database === DATABASE_TYPES.CLICKHOUSE), label: 'CH' },
+        { db: results.find(r => r.configuration.database === DATABASE_TYPES.POSTGRESQL && !r.configuration.withIndex), label: 'PG' },
+        { db: results.find(r => r.configuration.database === DATABASE_TYPES.POSTGRESQL && r.configuration.withIndex), label: 'PG w/Idx' }
+      ];
+      
+      databases.forEach(({ db, label }) => {
+        if (!db || !db.queryResults) return;
+        
+        const q1 = db.queryResults[0]?.duration || 0;
+        const q2 = db.queryResults[1]?.duration || 0;
+        const q3 = db.queryResults[2]?.duration || 0;
+        const q4 = db.queryResults[3]?.duration || 0;
+        const total = q1 + q2 + q3 + q4;
+        
+        // Use global scale for consistent x-axis normalization
+        const q1Length = Math.round(q1 * globalScale);
+        const q2Length = Math.round(q2 * globalScale);
+        const q3Length = Math.round(q3 * globalScale);
+        const q4Length = Math.round(q4 * globalScale);
+        
+        const q1Bar = '█'.repeat(q1Length);
+        const q2Bar = '▓'.repeat(q2Length);
+        const q3Bar = '▒'.repeat(q3Length);
+        const q4Bar = '░'.repeat(q4Length);
+        
+        const fullLabel = `${size} ${label}`.padEnd(12);
+        // No colors for markdown output
+        output += `  ${fullLabel} │${q1Bar}${q2Bar}${q3Bar}${q4Bar} ${total.toFixed(1)} ms\n`;
+      });
+      
+      output += '\n'; // Empty line between dataset sizes
+    }
+    
+    return output;
+  }
+
 
   private static generateDetailedBenchmarkContent(files: Array<{name: string, path: string}>): string {
     const timestamp = new Date().toLocaleString();
@@ -737,61 +975,6 @@ export class ASCIIGraphGenerator {
     return content;
   }
 
-  private static generateBenchmarkContent(files: Array<{name: string, path: string}>): string {
-    const timestamp = new Date().toLocaleString();
-    let content = `*Last updated: ${timestamp}*\n\n`;
-    
-    if (files.length === 0) {
-      return content + 'No benchmark results available. Run tests first: `npm start` and `npm run query-test`\n';
-    }
-
-    // Process each file and generate summary
-    let hasLoadTest = false;
-    let hasQueryTest = false;
-    const summaries: string[] = [];
-
-    for (const file of files) {
-      try {
-        const results = this.loadResults(file.path);
-        const isQueryOnly = results.some(r => r.iterations && r.iterations > 1);
-        
-        if (isQueryOnly) {
-          hasQueryTest = true;
-          summaries.push(this.generateQueryTestSummary(results, file.name));
-        } else {
-          hasLoadTest = true;
-          summaries.push(this.generateLoadTestSummary(results, file.name));
-        }
-      } catch (error) {
-        console.log(`⚠️  Skipping corrupted file: ${file.name}`);
-      }
-    }
-
-    // Add test type summary
-    content += '#### Available Results\n\n';
-    content += `- ${hasLoadTest ? '✅' : '❌'} **Load Test**: Initial performance comparison with data generation\n`;
-    content += `- ${hasQueryTest ? '✅' : '❌'} **Query Test**: Statistical analysis with multiple iterations\n\n`;
-
-    if (!hasLoadTest && !hasQueryTest) {
-      content += '⚠️  No valid benchmark results found.\n\n';
-      content += '**To generate results:**\n';
-      content += '1. `npm start` - Run load test\n';
-      content += '2. `npm run query-test` - Run statistical test\n';
-      content += '3. `npm run generate-graphs -- --update-readme` - Update this section\n';
-      return content;
-    }
-
-    // Add summaries
-    content += summaries.join('\n');
-    
-    content += '\n#### View Detailed Results\n\n';
-    content += '```bash\n';
-    content += 'npm run generate-graphs  # Interactive terminal graphs\n';
-    content += '```\n\n';
-    content += `**Result Files**: Check \`output/\` directory for detailed JSON and CSV results.\n`;
-
-    return content;
-  }
 
   private static generateDetailedLoadTestSummary(results: TestResults[], filename: string): string {
     let summary = `### ${filename.replace('.json', '').replace(/test-results_|query-test_/, '').replace(/_/g, ' ').replace(/(\d{4})-(\d{2})-(\d{2}) (\d{2})-(\d{2})-(\d{2})/, '$1/$2/$3 $4:$5:$6')}\n\n`;
@@ -980,18 +1163,18 @@ if (require.main === module) {
     .name('npm run generate-graphs')
     .description('Generate ASCII performance graphs from test results')
     .version('1.0.0')
-    .option('--update-readme', 'update RESULTS.md with generated graphs', false)
+    .option('--update-results', 'update RESULTS.md with generated graphs', false)
     .addHelpText('after', `
 
 Examples:
   npm run generate-graphs                        # Generate graphs to console
-  npm run generate-graphs -- --update-readme    # Generate graphs and update RESULTS.md
+  npm run generate-graphs -- --update-results   # Generate graphs and update RESULTS.md
 `)
     .action((options) => {
-      if (options.updateReadme) {
+      if (options.updateResults) {
         console.log('🔄 RESULTS.md update mode enabled');
       }
-      ASCIIGraphGenerator.generateGraphs(options.updateReadme);
+      ASCIIGraphGenerator.generateGraphs(options.updateResults);
     });
 
   program.parse();

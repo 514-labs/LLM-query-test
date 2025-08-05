@@ -1,0 +1,24 @@
+{
+  "sessionId": "bulk_1754368973776_5q1445wi7",
+  "startTime": "2025-08-05T04:42:53.776Z",
+  "totalSizes": 2,
+  "completedSizes": 1,
+  "results": [
+    {
+      "size": 5000,
+      "dataGenTime": 6311,
+      "queryTime": 0,
+      "success": false,
+      "timestamp": "2025-08-05T04:42:53.781Z",
+      "error": "Data generation failed: Command failed with code 1"
+    },
+    {
+      "size": 10000,
+      "dataGenTime": 3485,
+      "queryTime": 5824,
+      "success": true,
+      "timestamp": "2025-08-05T04:43:23.951Z"
+    }
+  ],
+  "currentSize": 10000
+}

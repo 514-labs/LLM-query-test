@@ -1,0 +1,25 @@
+{
+  "sessionId": "session_1754374074357_y02y0c1er",
+  "timestamp": "2025-08-05T06:07:54.357Z",
+  "totalConfigurations": 3,
+  "completedConfigurations": [],
+  "pendingConfigurations": [
+    {
+      "rowCount": 25000000,
+      "withIndex": false,
+      "database": "clickhouse"
+    },
+    {
+      "rowCount": 25000000,
+      "withIndex": true,
+      "database": "postgresql"
+    },
+    {
+      "rowCount": 25000000,
+      "withIndex": false,
+      "database": "postgresql"
+    }
+  ],
+  "partialResults": [],
+  "testType": "load"
+}
