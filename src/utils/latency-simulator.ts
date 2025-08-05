@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as readline from 'readline';
 import { Command } from 'commander';
+import * as cliProgress from 'cli-progress';
 import { DATABASE_TYPES } from '../constants/database';
 
 // Configure CLI with Commander.js
@@ -203,19 +204,41 @@ class LatencySimulator {
   }
 
   private async showSpinner(duration: number, message: string): Promise<void> {
-    const spinnerChars = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
-    let i = 0;
+    // Use cli-progress library like the rest of the project
+    const progressBar = new cliProgress.SingleBar({
+      format: `{spinner} ${message} | {duration_formatted}`,
+      hideCursor: true,
+      clearOnComplete: true,
+      linewrap: false
+    }, cliProgress.Presets.shades_classic);
+    
     const startTime = Date.now();
+    progressBar.start(duration, 0, {
+      spinner: '⠋',
+      duration_formatted: '0ms'
+    });
+    
+    const spinnerChars = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+    let spinnerIndex = 0;
     
     const interval = setInterval(() => {
       const elapsed = Date.now() - startTime;
-      process.stdout.write(`\r${spinnerChars[i]} ${message} (${elapsed.toFixed(0)}ms)`);
-      i = (i + 1) % spinnerChars.length;
+      progressBar.update(Math.min(elapsed, duration), {
+        spinner: spinnerChars[spinnerIndex],
+        duration_formatted: `${elapsed}ms`
+      });
+      spinnerIndex = (spinnerIndex + 1) % spinnerChars.length;
+      
+      if (elapsed >= duration) {
+        clearInterval(interval);
+      }
     }, 100);
     
     await this.sleep(duration);
     clearInterval(interval);
-    process.stdout.write(`\r${message} (${duration.toFixed(1)}ms)\n`);
+    
+    progressBar.stop();
+    console.log(`✓ ${message} (${duration.toFixed(1)}ms)`);
   }
 
   private async typeMessage(message: string, speed: number = 50): Promise<void> {
