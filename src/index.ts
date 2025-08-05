@@ -3,8 +3,34 @@ import { PerformanceTester } from './testing/performance-tester';
 import { ResultsReporter } from './reporting/reporter';
 import { config } from './config/config';
 
-// Configure CLI with Commander.js first to handle --help before config validation
+// Configure CLI with Commander.js first to handle --help before config validation  
 const program = new Command();
+
+// Check if this is being run from package.json "help" script
+const isHelpScript = process.argv[1]?.endsWith('index.js') && process.argv.includes('--help');
+
+if (isHelpScript) {
+  // Simple help for npm run help - no options shown
+  console.log(`db-performance-tester
+
+Performance testing application for ClickHouse vs PostgreSQL with LLM query patterns
+
+Available commands:
+  npm run bulk-test            Comprehensive bulk testing (starts databases automatically)
+  npm run generate-graphs      Generate performance visualizations (requires test results)
+  npm run latency-sim          Simulate chat conversation latency patterns
+  npm run start-dbs            Start database containers
+  npm run kill-dbs             Stop and remove all database containers
+  npm start                    Full benchmark with data generation (requires start-dbs)
+  npm run query-test           Statistical query tests (requires npm start)
+  npm run clean                Clear databases and results
+  npm run clean:db             Clear only databases
+  npm run clean:output         Clear only output files
+  npm run test:smoke           Run basic smoke tests
+  npm run dev                  Run in development mode with ts-node
+`);
+  process.exit(0);
+}
 
 program
   .name('db-performance-tester')
@@ -12,17 +38,7 @@ program
   .version('1.0.0')
   .option('--query-only', 'Run only query tests (skip data generation)')
   .option('--iterations <number>', 'Number of iterations per test')
-  .option('--time-limit <minutes>', 'Time limit per test in minutes')
-  .addHelpText('after', `
-
-Available commands:
-  npm run bulk-test            Comprehensive bulk testing (starts databases automatically)
-  npm run generate-graphs      Generate performance visualizations (requires test results)
-  npm run start-dbs            Start database containers
-  npm start                    Full benchmark with data generation (requires start-dbs)
-  npm run query-test           Statistical query tests (requires npm start)
-  npm run clean                Clear databases and results
-`);
+  .option('--time-limit <minutes>', 'Time limit per test in minutes');
 
 // Parse CLI arguments early to handle --help before any initialization
 program.parse(process.argv);

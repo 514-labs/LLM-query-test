@@ -1,5 +1,5 @@
 import { Pool, Client } from 'pg';
-import { config } from '../index';
+import { config } from '../config/config';
 
 export class PostgreSQLDatabase {
   private pool: Pool;

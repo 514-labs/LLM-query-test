@@ -1,0 +1,23 @@
+{
+  "sessionId": "bulk_1754369153711_joia66a35",
+  "startTime": "2025-08-05T04:45:53.711Z",
+  "totalSizes": 2,
+  "completedSizes": 2,
+  "results": [
+    {
+      "size": 10000,
+      "dataGenTime": 2639,
+      "queryTime": 4741,
+      "success": true,
+      "timestamp": "2025-08-05T04:45:53.716Z"
+    },
+    {
+      "size": 50000,
+      "dataGenTime": 9620,
+      "queryTime": 11443,
+      "success": true,
+      "timestamp": "2025-08-05T04:46:30.397Z"
+    }
+  ],
+  "currentSize": 50000
+}

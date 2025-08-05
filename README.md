@@ -1,10 +1,21 @@
 # LLM Query Performance Testing
 
-OLAP (ClickHouse) vs OLTP (PostgreSQL) performance using LLM query patterns.
+OLAP (ClickHouse) vs OLTP (PostgreSQL) performance benchmarking using LLM-style query patterns.
 
-**Results**: ClickHouse wins at >50K records (up to 50x faster at 10M). PostgreSQL wins on small datasets.
+This repo provides:
+
+1. A benchmarking tool for ClickHouse v Postgres comparison at different row counts: `npm run bulk-test`.
+2. A results visualizer: `npm run generate-graphs`
+3. A latency simulator, showing how a chat interface would feel given benchmark results: `npm run latency-sim`.
+
+![Latency Simulation](latency-sim-10m.gif)
+
+The above chat shows the resulting chat performance, at 10m rows, of Postgres (unindexed) and ClickHouse. 
 
 📊 **[Results →](RESULTS.md)**
+**Results**: ClickHouse wins at >50K records (up to 50x faster at 10M). PostgreSQL wins on small datasets.
+
+This repo ships with the benchmarking, viz and chat sim apps, as well as results for tests run from 10k to 10m rows (see [Benchmarking Methodology](BENCHMARK_METHODOLOGY.md) for how those tests were run). 
 
 ## Prerequisites
 
@@ -27,11 +38,24 @@ npm run build
 # Configure (optional - defaults work fine)
 cp .env.example .env
 
-# Run comprehensive bulk test
-npm run bulk-test
 ```
 
-Bulk test runs 9 dataset sizes (5K to 25M records). Configure in `.env` or use `npm start` for single 10M test.
+### Run chat sim
+
+Since the repo ships with results, you can run the chat sim with: `npm run latency-sim`.
+
+### Run your own tests
+
+If you want to run the benchmark yourself:
+```bash
+# Run Docker Desktop
+
+# Optionally, edit .env to set the test sizes you are interested in. 
+# Default: BULK_TEST_SIZES=10000,50000,100000,500000,1000000,5000000,10000000
+
+# Run the bulk test tool
+npm run bulk-test
+```
 
 ## Commands
 

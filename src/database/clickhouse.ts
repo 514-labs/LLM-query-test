@@ -1,5 +1,5 @@
 import { createClient, ClickHouseClient } from '@clickhouse/client';
-import { config } from '../index';
+import { config } from '../config/config';
 
 // Global flag to prevent multiple database creation attempts
 let globalDatabaseCreated = false;

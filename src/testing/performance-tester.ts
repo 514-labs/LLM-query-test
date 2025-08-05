@@ -2,7 +2,7 @@ import { ClickHouseDatabase } from '../database/clickhouse';
 import { PostgreSQLDatabase } from '../database/postgresql';
 import { DataGenerator, AircraftTrackingRecord } from '../data/generator';
 import { getQueries, executeQuery, QueryResult } from './queries';
-import { config as appConfig, config } from '../index';
+import { config as appConfig, config } from '../config/config';
 import { CheckpointManager, TestCheckpoint } from '../utils/checkpoint-manager';
 import { DATABASE_TYPES, DatabaseType, getDatabaseDisplayName, DatabaseConfiguration } from '../constants/database';
 

@@ -85,7 +85,7 @@ class BulkTester {
 
   constructor() {
     // Get configuration from .env first, then override with CLI options
-    const envSizes = process.env.BULK_TEST_SIZES || '5000,10000,50000,100000,500000,1000000,5000000,10000000,25000000';
+    const envSizes = process.env.BULK_TEST_SIZES || '10000,50000,100000,500000,1000000,5000000,10000000,25000000';
     const envTimeLimit = process.env.BULK_TEST_TIME_LIMIT || '60';
     const envOutputDir = process.env.BULK_TEST_OUTPUT_DIR || 'output';
 
@@ -99,7 +99,7 @@ class BulkTester {
       }
     } catch (error) {
       console.warn('⚠️  Invalid sizes format, using defaults');
-      sizes = [5000, 10000, 50000, 100000, 500000, 1000000, 5000000, 10000000, 25000000];
+      sizes = [10000, 50000, 100000, 500000, 1000000, 5000000, 10000000, 25000000];
     }
 
     this.config = {

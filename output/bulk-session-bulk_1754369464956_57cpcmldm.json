@@ -1,0 +1,66 @@
+{
+  "sessionId": "bulk_1754369464956_57cpcmldm",
+  "startTime": "2025-08-05T04:51:04.956Z",
+  "totalSizes": 8,
+  "completedSizes": 7,
+  "results": [
+    {
+      "size": 10000,
+      "dataGenTime": 2443,
+      "queryTime": 4753,
+      "success": true,
+      "timestamp": "2025-08-05T04:51:07.667Z"
+    },
+    {
+      "size": 50000,
+      "dataGenTime": 9665,
+      "queryTime": 10690,
+      "success": true,
+      "timestamp": "2025-08-05T04:51:44.255Z"
+    },
+    {
+      "size": 100000,
+      "dataGenTime": 17901,
+      "queryTime": 21375,
+      "success": true,
+      "timestamp": "2025-08-05T04:52:33.978Z"
+    },
+    {
+      "size": 500000,
+      "dataGenTime": 45953,
+      "queryTime": 98718,
+      "success": true,
+      "timestamp": "2025-08-05T04:53:42.728Z"
+    },
+    {
+      "size": 1000000,
+      "dataGenTime": 94630,
+      "queryTime": 158842,
+      "success": true,
+      "timestamp": "2025-08-05T04:56:37.404Z"
+    },
+    {
+      "size": 5000000,
+      "dataGenTime": 496491,
+      "queryTime": 684568,
+      "success": true,
+      "timestamp": "2025-08-05T05:01:21.814Z"
+    },
+    {
+      "size": 10000000,
+      "dataGenTime": 1113225,
+      "queryTime": 1610559,
+      "success": true,
+      "timestamp": "2025-08-05T05:21:35.329Z"
+    },
+    {
+      "size": 25000000,
+      "dataGenTime": 19576819,
+      "queryTime": 0,
+      "success": false,
+      "timestamp": "2025-08-05T06:07:31.662Z",
+      "error": "Data generation failed: Command failed with code 1"
+    }
+  ],
+  "currentSize": 25000000
+}
