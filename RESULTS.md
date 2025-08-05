@@ -9,20 +9,6 @@ Performance comparison: ClickHouse (OLAP) vs PostgreSQL (OLTP).
 - ClickHouse (8123), PostgreSQL no-idx (5432), PostgreSQL idx (5433)
 - Dataset: 46-column aircraft tracking records
 
-## Summary Results
-
-| Dataset Size | Winner (Load Test) | Winner (Query Test) | ClickHouse Advantage |
-|--------------|-------------------|-------------------|---------------------|
-| 10K | PostgreSQL (no-idx) 9.3ms | PostgreSQL (idx) 5.5ms | 1.8x slower |
-| 50K | ClickHouse 17.8ms | ClickHouse 9.8ms | 2.1x faster |
-| 100K | ClickHouse 21.9ms | ClickHouse 13.1ms | 3.4x faster |
-| 500K | ClickHouse 49.4ms | ClickHouse 15.9ms | 7.3x faster |
-| 1M | ClickHouse 44.8ms | ClickHouse 20.7ms | 16.7x faster |
-| 5M | ClickHouse 62.0ms | ClickHouse 31.1ms | 34.8x faster |
-| 10M | ClickHouse 192.6ms | ClickHouse 41.4ms | 52.8x faster |
-
-*Last updated: 8/1/2025, 12:12:55 PM*
-
 ## Key Insights
 
 - Crossover: ~25K-50K records
@@ -34,12 +20,9 @@ Performance comparison: ClickHouse (OLAP) vs PostgreSQL (OLTP).
 
 ### Performance Overview
 
-```
 📊 Performance Overview by Dataset Size
---------------------------------------------------------------------------------
-+------+-----------------+---------------------+-----------------+--------------+
 | Size | ClickHouse (ms) | PostgreSQL+Idx (ms) | PostgreSQL (ms) | CH Advantage |
-+------+-----------------+---------------------+-----------------+--------------+
+|------|-----------------|---------------------|-----------------|--------------|
 | 10K  | 27.9            | 12.9                | 16.6            | 2.2x slower  |
 | 50K  | 75.5            | 60.5                | 87.0            | Similar      |
 | 100K | 60.5            | 141.5               | 125.1           | 2.3x faster  |
@@ -47,8 +30,8 @@ Performance comparison: ClickHouse (OLAP) vs PostgreSQL (OLTP).
 | 1M   | 121.1           | 1066.7              | 974.1           | 8.8x faster  |
 | 5M   | 415.7           | 4053.6              | 5850.7          | 9.8x faster  |
 | 10M  | 452.9           | 7594.9              | 12201.1         | 16.8x faster |
-+------+-----------------+---------------------+-----------------+--------------+
 
+```
 Total (all queries combined):
 Legend: █ Q1 ▓ Q2 ▒ Q3 ░ Q4
   10K CH       │ 27.9 ms

@@ -26,7 +26,7 @@ This benchmark compares database performance using a realistic aircraft tracking
    - Q4: Statistical calculation (average counts)
    - Default: 100 iterations per configuration (configurable via `QUERY_TEST_ITERATIONS`)
 
-4. **Results Collection**: Capture timing data with statistical analysis
+4. **Results Collection**: Capture timing data with statistical analysis (saved to `output/` directory)
 
 ## Results Location
 
