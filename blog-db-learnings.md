@@ -56,6 +56,8 @@ This progression from schema discovery → sampling → aggregation → statisti
 
 ## The Results: 50K Row Crossover Point
 
+Note, this is based on the query pattern and hardware of my benchmark, but you can run the benchmark yourself to find your "crossover point".
+
 ![PostgreSQL vs ClickHouse Crossover Diagram](visualization/crossover_diagram.svg)
 
 | Dataset Size | ClickHouse | PostgreSQL | PG+Index | Winner |
@@ -507,7 +509,8 @@ Default value storage:
 Database selection traditionally required deep expertise to realize performance benefits. LLMs change this by making database-specific optimizations accessible through guided conversations rather than research projects.
 
 **When to choose what:**
-*Note, this is based on the query pattern and hardware of my benchmark, but you can run the benchmark yourself to find your "crossover point".
+*Note, this is based on the query pattern and hardware of my benchmark, but you can run the benchmark yourself to find your "crossover point"*.
+
 - **<50K rows:** PostgreSQL (lower overhead)
 - **>50K rows:** ClickHouse for analytics (columnar benefits emerge)
 - **>1M rows:** ClickHouse strongly preferred (significant performance gap)
