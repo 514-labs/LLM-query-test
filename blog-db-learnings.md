@@ -206,6 +206,14 @@ I asked Claude: *"What's the optimal PostgreSQL batch size for 46 columns?"*
 **Phase 4: Parallel workers**
 *Result: 18 minutes (25x improvement from Phase 1)*
 
+### Postgres performance improvement
+```
+PG Phase 1: [████████████████████████████████] 7.5 hours
+PG Phase 2: [████████████████] 80 minutes  
+PG Phase 3: [██████] 30 minutes
+PG Phase 4: [██] 18 minutes ← PostgreSQL winner
+```
+
 ### Bulk inserts in ClickHouse
 
 Here's where things got interesting. When I applied the same parallel worker approach to ClickHouse:
@@ -248,13 +256,17 @@ Engine parallelism = Performance
 "Send me data, I'll parallelize internally"
 ```
 
-### The Visual Performance Journey
-
-![Bulk Loading Performance Journey](visualization/bulk_loading_performance.svg)
-
-Here's how the performance improved with each phase:
-
 **The lesson:** OLTP databases benefit from client-side parallelism because they're designed for concurrent operations. OLAP databases are already internally parallelized for the operations they're optimized for.
+
+### Relative Performance
+```
+PG Phase 1: [████████████████████████████████] 7.5 hours
+PG Phase 2: [████████████████] 80 minutes  
+PG Phase 3: [██████] 30 minutes
+PG Phase 4: [██] 18 minutes ← PostgreSQL winner
+
+ClickHouse: [█] 13 minutes (single-threaded optimal)
+```
 
 ## Learning #3: Type Precision Affects Performance Differently
 
