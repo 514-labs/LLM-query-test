@@ -1,0 +1,37 @@
+{
+  "bulk_loading_performance": {
+    "phases": [
+      { "name": "Individual inserts", "time_minutes": 450, "improvement": 1.0 },
+      { "name": "Basic batching (100)", "time_minutes": 80, "improvement": 5.6 },
+      { "name": "Parameter optimization (1,400)", "time_minutes": 30, "improvement": 15.0 },
+      { "name": "PostgreSQL parallel workers", "time_minutes": 18, "improvement": 25.0 },
+      { "name": "ClickHouse single-threaded", "time_minutes": 13, "improvement": 34.6 }
+    ]
+  },
+  "query_performance_crossover": {
+    "datasets": [
+      { "size": "10K", "clickhouse_ms": 27.9, "postgresql_ms": 16.6, "postgresql_indexed_ms": 12.9, "winner": "PG+Index" },
+      { "size": "50K", "clickhouse_ms": 75.5, "postgresql_ms": 87.0, "postgresql_indexed_ms": 60.5, "winner": "Equal" },
+      { "size": "1M", "clickhouse_ms": 121.1, "postgresql_ms": 974.1, "postgresql_indexed_ms": 1067, "winner": "ClickHouse" },
+      { "size": "10M", "clickhouse_ms": 453, "postgresql_ms": 12201, "postgresql_indexed_ms": 7595, "winner": "ClickHouse" }
+    ]
+  },
+  "type_optimization_impact": {
+    "storage": {
+      "generic_types_gb": 2.1,
+      "optimized_types_gb": 1.8,
+      "reduction_percent": 15
+    },
+    "query_performance": {
+      "generic_types_ms": 127,
+      "optimized_types_ms": 109,
+      "improvement_percent": 15
+    }
+  },
+  "function_comparison": {
+    "unique_count_5m_records": {
+      "postgresql_exact": { "result": 4847, "time_ms": 2606, "accuracy": "100%" },
+      "clickhouse_approx": { "result": 4851, "time_ms": 61, "accuracy": "99.92%", "speedup": "40x" }
+    }
+  }
+}
