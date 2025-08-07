@@ -1,6 +1,6 @@
 # PostgreSQL vs ClickHouse: What I Learned From My First Database Benchmark
 
-My first query against 10 million rows in ClickHouse took 4,191 milliseconds. My last took 75. That 50+x performance gain came from a single line of code that revealed everything I misunderstood about columnar databases.
+My first query against 10 million rows in ClickHouse took 4,191 milliseconds. My last took 75. That 50+x performance gain came from a single line of code that represents everything I learned about columnar databases.
 
 Working at [a company that builds open source OLAP tools](https://docs.fiveonefour.com/moose) means I hear about ClickHouse performance daily. Everyone talks about how much faster it is than traditional databases for analytics. But as a product manager, I've learned there's a difference between hearing about something and actually understanding it.
 
