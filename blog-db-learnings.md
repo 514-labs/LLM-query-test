@@ -1,10 +1,10 @@
 # PostgreSQL vs ClickHouse: What I Learned From My First Database Benchmark
 
-My first query against 10 million rows in ClickHouse took 4,191 milliseconds. My last took 75. The difference wasn't a new server or additional memory—it was a single line that revealed my complete misunderstanding of how columnar databases work.
+My first query against 10 million rows in ClickHouse took 4,191 milliseconds. My last took 75. The difference wasn't a new server or additional memory—it was a single line that taught me a lot about how columnar databases work.
 
-Working at a company that builds OLAP tools means I hear about ClickHouse performance daily. Everyone talks about how much faster it is than traditional databases for analytics. But as a product manager with 8 years in data, I've learned there's a difference between hearing about something and actually understanding it. I was curious enough to dig deeper into what those implementation differences actually looked like, and LLMs have helped me venture much further into technical territory than my traditional PM role typically allows.
+Working at [a company that builds open source OLAP tools](https://docs.fiveonefour.com/moose) means I hear about ClickHouse performance daily. Everyone talks about how much faster it is than traditional databases for analytics. But as a product manager, I've learned there's a difference between hearing about something and actually understanding it.
 
-So I built this benchmark with a specific question in mind: **How would an AI agent query these databases during a conversation?** I wanted to understand not just that ClickHouse is faster for analytics, but when it matters, why it works, and what the code actually looks like when you're trying to make it perform. What I discovered was a journey of mistakes, fixes, and insights that fundamentally changed how I think about database selection.
+So I built this benchmark with a specific question in mind: **How would an AI agent query these databases during a conversation?** I wanted to understand not just that ClickHouse is faster for analytics, but when it matters, why it works, and what the code actually looks like when you're trying to make it perform.
 
 ## How I Tested This
 
@@ -67,11 +67,11 @@ This progression from schema discovery → sampling → aggregation → statisti
 
 *Times represent the full 4-query analytical workload: schema discovery, data sampling, aggregation, and statistical calculation.*
 
-**Key insight**: PostgreSQL wins on small datasets (lower overhead). ClickHouse dominates once columnar benefits outweigh setup costs. The crossover matters for architecture decisions.
+**Key insight**: PostgreSQL is faster on small datasets (lower overhead). ClickHouse is faster once columnar benefits outweigh setup costs.
 
 ## Learning #1: ORDER BY = Physical Storage (Not Just Sorting)
 
-This was my biggest "aha!" moment, and it perfectly illustrates why understanding database internals matters.
+This was my biggest "aha!" moment, and it perfectly illustrates why understanding database internals matters. (Turns out I should have [RTFMed](https://clickhouse.com/docs/engines/table-engines/mergetree-family/mergetree)).
 
 ### The Disaster: My First Schema
 
@@ -89,7 +89,7 @@ CREATE TABLE performance_test (
 ORDER BY (timestamp, hex);  -- "Logical" chronological order
 ```
 
-When I ran my analytical query, disaster struck:
+When I ran my analytical query, my results weren't as performant as I wanted:
 
 ```sql
 -- The query that took 4,191ms
@@ -107,9 +107,9 @@ GROUP BY hour;
 
 ### The Schema Fix
 
-I asked Claude about the slow query performance: *"ClickHouse query taking 4+ seconds on 10M rows. Schema and query attached - what's wrong?"*
+I asked Nico (my mate and our CTO—he's patient with my curiosity) about the slow query performance: *"ClickHouse query taking 4+ seconds on 10M rows. Schema and query attached - what's wrong?"*
 
-**"Your ORDER BY doesn't match your query pattern. You're filtering on `alt_baro_is_ground` but it's not first in your primary key. ClickHouse has to scan the entire dataset."**
+**"Your ORDER BY doesn't match your query pattern. You're filtering on whether the aircraft is on the ground but it's not first in your primary key. ClickHouse has to scan the entire dataset to find those planes."**
 
 The fix was embarrassingly simple:
 
@@ -174,13 +174,12 @@ This revealed a fundamental architectural difference:
 > **ClickHouse philosophy:** "Tell me your primary query pattern upfront, and I'll organize everything for maximum speed."
 > - ✅ Blazing fast: optimal performance for the chosen pattern  
 > - ❌ Commitment required: hard to change after data is loaded
-> - ❌ Can be terrible: wrong ORDER BY = disaster
 
 ### Memory Implications
 
 When I tested this with reduced memory (2GB vs 4GB), the ORDER BY choice became even more critical. ClickHouse failed completely during bulk inserts at 2GB - it needs substantial memory to sort and compress data during loading. But once loaded, queries ran efficiently at any memory level.
 
-*This wasn't optimization - this was fixing a fundamentally broken OLAP schema design.*
+*This wasn't optimization - this was fixing a fundamentally wrongly designed OLAP schema.*
 
 ## Learning #2: Bulk Loading Architectures Differ Completely
 
@@ -207,7 +206,7 @@ I asked Claude: *"What's the optimal PostgreSQL batch size for 46 columns?"*
 **Phase 4: Parallel workers**
 *Result: 18 minutes (25x improvement from Phase 1)*
 
-### The ClickHouse Surprise
+### Bulk inserts in ClickHouse
 
 Here's where things got interesting. When I applied the same parallel worker approach to ClickHouse:
 
@@ -217,7 +216,7 @@ Here's where things got interesting. When I applied the same parallel worker app
 // Actual result: Minimal improvement (57.3K → 54.8K records/sec)
 ```
 
-**Why?** ClickHouse's columnar engine is already internally optimized for bulk operations. Adding client-side parallelism actually created overhead rather than improvement.
+**Why?** ClickHouse's columnar engine is already internally optimized for bulk operations. Adding client-side parallelism actually created overhead rather than improvement. Again, a cool learning for me, but [probably should have read the docs](https://clickhouse.com/docs/best-practices/selecting-an-insert-strategy): "We recommend inserting data in batches of at least 1,000 rows, and ideally between 10,000–100,000 rows. Fewer, larger inserts reduce the number of parts written, minimize merge load, and lower overall system resource usage.".
 
 ### The Architecture Revelation
 
@@ -255,19 +254,6 @@ Engine parallelism = Performance
 
 Here's how the performance improved with each phase:
 
-```
-Phase 1: [████████████████████████████████] 7.5 hours
-Phase 2: [████████████████] 80 minutes  
-Phase 3: [██████] 30 minutes
-Phase 4: [██] 18 minutes ← PostgreSQL winner
-
-ClickHouse: [█] 13 minutes (single-threaded optimal)
-```
-
-### The Memory Trade-off
-
-This architectural difference extends to memory usage. PostgreSQL can perform bulk inserts with limited memory by processing rows incrementally. ClickHouse requires substantial memory during bulk operations to buffer, sort, and compress data for optimal columnar storage.
-
 **The lesson:** OLTP databases benefit from client-side parallelism because they're designed for concurrent operations. OLAP databases are already internally parallelized for the operations they're optimized for.
 
 ## Learning #3: Type Precision Affects Performance Differently
@@ -301,14 +287,12 @@ ORDER BY (alt_baro_is_ground, hex, timestamp);
 
 ### LLM-Optimized Schema
 
-I asked Claude: *"How should I optimize ClickHouse types for this aircraft tracking schema?"*
-
-**"Use FixedString for hex codes (always 6 chars), LowCardinality for transponder_type (few unique values), and precise numeric types to minimize storage."**
+Usually, I wouldn't have gone further, not bothering to optimize the types for the labor cost. But now, I can give Claude Code or Cursor (with almost any LLM) a code sample and [a link to the ClickHouse type documentation](https://clickhouse.com/docs/knowledgebase/tips-tricks-optimizing-basic-data-types-in-clickhouse), and ask for it to regenerate the `CREATE TABLE` statement for efficiently: *"How should I optimize ClickHouse types for this aircraft tracking schema?"*
 
 ```sql
 -- ClickHouse schema (optimized)
 CREATE TABLE performance_test (
-  lat Float64,                              -- Sufficient precision
+  lat Float64,                             -- Sufficient precision
   alt_baro Int32,                          -- 32-bit range adequate
   hex FixedString(6),                      -- Always exactly 6 characters
   approach UInt8,                          -- 1 byte boolean
@@ -357,23 +341,13 @@ LowCardinality(String):
 └─────┴─────┴─────┘
 ```
 
-### The Development Speed Trade-off
-
-**Traditional approach:** Research ClickHouse documentation, understand compression algorithms, test different type combinations.
-**Time:** Hours to days.
-
-**LLM-assisted approach:** Describe the data, ask for optimal types, get explanation of why.
-**Time:** Minutes.
-
 **Result:** LLMs remove the expertise barrier for database-specific optimizations without sacrificing performance.
 
 ## Learning #4: Native Functions vs Standard SQL
 
-Database-specific functions often perform significantly better than generic SQL.
+Database-specific functions often perform significantly better than generic SQL. Again, these weren't all ClickHouse functions that I new beforehand, but they were optimizations that were easily made by a copilot, and explained clearly.
 
 ### Unique Count Comparison
-
-![Function Performance Comparison](visualization/function_comparison.svg)
 
 Testing unique aircraft count on 5M records:
 
@@ -411,12 +385,6 @@ GROUP BY toStartOfHour(timestamp);
 -- Native function, 20-30% faster
 ```
 
-### When to Use Approximation
-
-I asked Claude: *"When is ClickHouse's uniq() approximation acceptable vs uniqExact()?"*
-
-**"Use uniq() for analytics dashboards, user behavior analysis, capacity planning. Use uniqExact() for financial reports, compliance, billing, or when exactness is legally required."**
-
 ### The Accuracy vs Speed Trade-off
 
 **ClickHouse approximation algorithms:**
@@ -424,29 +392,19 @@ I asked Claude: *"When is ClickHouse's uniq() approximation acceptable vs uniqEx
 uniq() - HyperLogLog algorithm
 ├── Speed: Very fast
 ├── Memory: Low (fixed size)  
-├── Accuracy: 99%+ for most data
-└── Use case: Analytics, monitoring
+└── Accuracy: 99%+ for most data
 
 uniqExact() - Exact counting
 ├── Speed: Slower (similar to PostgreSQL)
 ├── Memory: High (grows with cardinality)
-├── Accuracy: 100%
-└── Use case: Financial, legal, billing
+└── Accuracy: 100%
 ```
-
-### Function Discovery Through LLMs
-
-**Traditional approach:** Read documentation, search Stack Overflow, test different functions.
-
-**LLM approach:** *"What's the ClickHouse equivalent of PostgreSQL's date_trunc for hourly grouping?"*
-
-Response: **"Use toStartOfHour(). It's optimized for ClickHouse's columnar storage and typically 20-30% faster than generic date functions."**
 
 **Result:** Native functions provide measurable performance gains, and LLMs make them discoverable without deep database expertise.
 
 ## Learning #5: NULL Handling Philosophy
 
-OLAP and OLTP databases handle missing data differently by design.
+OLAP and OLTP databases handle missing data differently by design. I know this is a key philosophical / architectural difference, but I certainly didn't know that 6 days ago.
 
 ### Schema Design Differences
 
@@ -517,18 +475,6 @@ Default value storage:
 - No NULL checking in aggregate functions
 - Vectorized operations run faster
 
-### When This Matters
-
-**OLAP use cases where defaults work:**
-- Event counting (no event = 0 events)
-- Metrics aggregation (missing metric = 0)
-- Time series analysis (missing data point = 0)
-
-**OLTP use cases where NULLs are needed:**
-- User profile fields (missing = unknown, not zero)
-- Financial transactions (missing amount ≠ $0)
-- Optional form fields (blank ≠ zero)
-
 ### The Trade-off
 
 **ClickHouse:** Sacrifices semantic precision for performance and compression.
@@ -538,11 +484,9 @@ Default value storage:
 
 ## The LLM Advantage
 
-Traditional OLAP optimization required weeks of documentation reading and months of trial and error. LLMs compress this to minutes of guided questions and explanations.
-
 **Examples from this project:**
-- Schema optimization: 15% storage reduction in 30 seconds
-- Query fix: 55x performance improvement from one-line change  
+- Schema optimization: 15% storage reduction in a single Claude Code chat
+- Query fix: 55x performance improvement from a one-line copilot written code change  
 - Function selection: 20-30% performance gain from native functions
 - Bulk loading: 25x improvement from parameter limit knowledge
 
@@ -551,6 +495,7 @@ Traditional OLAP optimization required weeks of documentation reading and months
 Database selection traditionally required deep expertise to realize performance benefits. LLMs change this by making database-specific optimizations accessible through guided conversations rather than research projects.
 
 **When to choose what:**
+*Note, this is based on the query pattern and hardware of my benchmark, but you can run the benchmark yourself to find your "crossover point".
 - **<50K rows:** PostgreSQL (lower overhead)
 - **>50K rows:** ClickHouse for analytics (columnar benefits emerge)
 - **>1M rows:** ClickHouse strongly preferred (significant performance gap)
