@@ -301,7 +301,7 @@ ORDER BY (alt_baro_is_ground, hex, timestamp);
 
 ### LLM-Optimized Schema
 
-Usually, I wouldn't have gone further, not bothering to optimize the types for the labor cost. But now, I can give Claude Code or Cursor (with almost any LLM) a code sample and [a link to the ClickHouse type documentation](https://clickhouse.com/docs/knowledgebase/tips-tricks-optimizing-basic-data-types-in-clickhouse), and ask for it to regenerate the `CREATE TABLE` statement for efficiently: *"How should I optimize ClickHouse types for this aircraft tracking schema?"*
+Usually, I wouldn't have gone further, not bothering to optimize the types for the labor cost. But now, I can give Claude Code or Cursor (with almost any LLM) a code sample and [a link to the ClickHouse type documentation](https://clickhouse.com/docs/knowledgebase/tips-tricks-optimizing-basic-data-types-in-clickhouse), and ask for it to regenerate the `CREATE TABLE` statement for efficiency: *"How should I optimize ClickHouse types for this aircraft tracking schema?"*
 
 ```sql
 -- ClickHouse schema (optimized)
@@ -359,7 +359,7 @@ LowCardinality(String):
 
 ## Learning #4: Native Functions vs Standard SQL
 
-Database-specific functions often perform significantly better than generic SQL. Again, these weren't all ClickHouse functions that I new beforehand, but they were optimizations that were easily made by a copilot, and explained clearly.
+Database-specific functions often perform significantly better than generic SQL. Again, these weren't all ClickHouse functions that I knew beforehand, but they were optimizations that were easily made by a copilot, and explained clearly.
 
 ### Unique Count Comparison
 
