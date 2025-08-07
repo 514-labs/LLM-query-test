@@ -56,3 +56,9 @@ temp/
 # Internal docs
 BLOG_OUTLINE.md
 CLAUDE.md
+
+# Visualization generation tooling (keep SVGs, ignore tooling)
+visualization/package*.json
+visualization/generate-charts.ts
+visualization/README.md
+visualization/node_modules/
