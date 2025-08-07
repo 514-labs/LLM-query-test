@@ -80,6 +80,8 @@ Note, this is based on the query pattern and hardware of my benchmark, but you c
 
 **Key insight**: PostgreSQL is faster on small datasets (lower overhead). ClickHouse is faster once columnar benefits outweigh setup costs.
 
+*You can find the full benchmark results and reproducible data in [RESULTS.md](RESULTS.md) if you want to explore the numbers yourself.*
+
 ## Learning #1: ORDER BY = Physical Storage (Not Just Sorting)
 
 This was my biggest "aha!" moment, and it perfectly illustrates why understanding database internals matters. (Turns out I should have [RTFMed](https://clickhouse.com/docs/engines/table-engines/mergetree-family/mergetree)).
@@ -528,4 +530,4 @@ Database selection traditionally required deep expertise to realize performance 
 
 ---
 
-**Full code and git history**: [github.com/oatsandsugar/LLM-query-test](https://github.com/oatsandsugar/LLM-query-test)
+**Full code and git history**: [github.com/514-labs/LLM-query-test](https://github.com/514-labs/LLM-query-test)
