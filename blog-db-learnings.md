@@ -1,10 +1,23 @@
 # PostgreSQL vs ClickHouse: What I Learned From My First Database Benchmark
 
-My first query against 10 million rows in ClickHouse took 4,191 milliseconds. My last took 75. The difference wasn't a new server or additional memory—it was a single line that taught me a lot about how columnar databases work.
+My first query against 10 million rows in ClickHouse took 4,191 milliseconds. My last took 75. That 50+x performance gain came from a single line of code that revealed everything I misunderstood about columnar databases.
 
 Working at [a company that builds open source OLAP tools](https://docs.fiveonefour.com/moose) means I hear about ClickHouse performance daily. Everyone talks about how much faster it is than traditional databases for analytics. But as a product manager, I've learned there's a difference between hearing about something and actually understanding it.
 
 So I built this benchmark with a specific question in mind: **How would an AI agent query these databases during a conversation?** I wanted to understand not just that ClickHouse is faster for analytics, but when it matters, why it works, and what the code actually looks like when you're trying to make it perform.
+
+## Table of Contents
+
+- [Methodology](#how-i-tested-this)
+- [Query pattern](#the-workload-llm-style-data-exploration)
+- [Results](#the-results-50k-row-crossover-point--clickhouse-starts-to-be-meaningfully-better-at-1m-rows)
+- [Learning #1: ORDER BY = Physical Storage (Not Just Sorting)](#learning-1-order-by--physical-storage-not-just-sorting)
+- [Learning #2: Bulk Loading Architectures Differ Completely](#learning-2-bulk-loading-architectures-differ-completely)
+- [Learning #3: Type Precision Affects Performance Differently](#learning-3-type-precision-affects-performance-differently)
+- [Learning #4: Native Functions vs Standard SQL](#learning-4-native-functions-vs-standard-sql)
+- [Learning #5: NULL Handling Philosophy](#learning-5-null-handling-philosophy)
+- [The LLM Advantage](#the-llm-advantage)
+- [Conclusion](#conclusion)
 
 ## How I Tested This
 
@@ -14,11 +27,7 @@ The workload itself was designed to simulate how an AI agent might progressively
 
 *You can find the full methodology and reproducible setup in [BENCHMARK_METHODOLOGY.md](BENCHMARK_METHODOLOGY.md) if you want to run this yourself.*
 
-## The Short Version
-
-I expected ClickHouse to be "faster." What I discovered was that my first attempt was 55x slower than it should have been because I treated an OLAP database like an OLTP one. Once I fixed my schema design, ClickHouse was indeed 16.8x faster on my 10 million row analytical workload—but PostgreSQL actually won on smaller datasets. The most surprising insight wasn't about raw performance; it was that traditional barriers to specialized databases become much more manageable with LLM assistance, completely changing the cost/benefit calculation for when to use OLAP systems.
-
-### The Workload: LLM-Style Data Exploration
+## The Workload: LLM-Style Data Exploration
 
 Here's what a typical AI-assisted data exploration looks like. Imagine asking Claude: *"Help me understand this aircraft tracking dataset"*
 
@@ -54,7 +63,7 @@ ORDER BY hour;
 
 This progression from schema discovery → sampling → aggregation → statistical analysis mirrors how developers actually explore unfamiliar data with AI assistance.
 
-## The Results: 50K Row Crossover Point
+## The Results: 50K Row Crossover Point / ClickHouse starts to be meaningfully better at 1M rows
 
 Note, this is based on the query pattern and hardware of my benchmark, but you can run the benchmark yourself to find your "crossover point".
 
