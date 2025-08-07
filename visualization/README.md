@@ -1,13 +1,12 @@
 # Database Benchmark Visualization
 
-Generate embeddable PNG charts for the PostgreSQL vs ClickHouse benchmark results using TypeScript and Chart.js.
+Generate embeddable PNG charts for the PostgreSQL vs ClickHouse benchmark results using TypeScript and D3.js.
 
 ## Charts Generated
 
 1. **Crossover Diagram** - Line chart showing the critical 50K row crossover point
 2. **Bulk Loading Performance** - Bar chart showing the 450→13 minute optimization journey
 3. **Function Comparison** - Bar chart showing 40x speed improvement with approximate functions
-4. **Type Optimization Impact** - Bar chart showing 15% improvements from type optimization
 
 ## Usage
 
@@ -17,7 +16,7 @@ npm install
 npm run generate
 ```
 
-This generates 4 PNG files ready for embedding in blog posts or documentation.
+This generates 3 SVG files ready for embedding in blog posts or documentation.
 
 ## Key Insights Visualized
 
