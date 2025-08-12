@@ -1,0 +1,87 @@
+[
+  {
+    "configuration": {
+      "rowCount": 1000,
+      "withIndex": false,
+      "database": "postgresql"
+    },
+    "setupTime": 0,
+    "queryResults": [
+      {
+        "name": "Q1 Show tables",
+        "duration": 0.7834795,
+        "rows": 1
+      },
+      {
+        "name": "Q2 Explore schema with sample data",
+        "duration": 0.844123,
+        "rows": 10
+      },
+      {
+        "name": "Q3 Hourly aircraft count - today",
+        "duration": 0.7315240000000001,
+        "rows": 24
+      },
+      {
+        "name": "Q4 Hourly aircraft count - day before yesterday",
+        "duration": 0.7753895,
+        "rows": 24
+      }
+    ],
+    "totalQueryTime": 3.1345160000000005,
+    "totalTime": 3.1345160000000005,
+    "iterations": 100,
+    "timedOut": false,
+    "completedIterations": 100,
+    "queryStats": {
+      "mean": [
+        0.8230734099999999,
+        0.87741626,
+        0.7736514099999999,
+        0.7912866500000005
+      ],
+      "median": [
+        0.7834795,
+        0.844123,
+        0.7315240000000001,
+        0.7753895
+      ],
+      "min": [
+        0.722691,
+        0.78631,
+        0.685501,
+        0.71182
+      ],
+      "max": [
+        2.627592,
+        1.831656,
+        1.538025,
+        1.145802
+      ],
+      "stdDev": [
+        0.21402169040656113,
+        0.13659757000368786,
+        0.12899403996310024,
+        0.07013569718643639
+      ],
+      "confidenceInterval95": [
+        {
+          "lower": 0.781125158680314,
+          "upper": 0.8650216613196858
+        },
+        {
+          "lower": 0.8506431362792771,
+          "upper": 0.9041893837207228
+        },
+        {
+          "lower": 0.7483685781672322,
+          "upper": 0.7989342418327676
+        },
+        {
+          "lower": 0.777540053351459,
+          "upper": 0.805033246648542
+        }
+      ]
+    }
+  }
+]

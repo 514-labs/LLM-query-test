@@ -1,0 +1,16 @@
+{
+  "sessionId": "bulk_1755042475535_kmf4vb47q",
+  "startTime": "2025-08-12T23:47:55.535Z",
+  "totalSizes": 1,
+  "completedSizes": 1,
+  "results": [
+    {
+      "size": 1000,
+      "dataGenTime": 1017,
+      "queryTime": 4528,
+      "success": true,
+      "timestamp": "2025-08-12T23:47:55.546Z"
+    }
+  ],
+  "currentSize": 1000
+}

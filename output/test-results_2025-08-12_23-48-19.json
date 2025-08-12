@@ -1,0 +1,1199 @@
+[
+  {
+    "configuration": {
+      "rowCount": 1000,
+      "withIndex": false,
+      "database": "clickhouse"
+    },
+    "setupTime": 0,
+    "queryResults": [
+      {
+        "name": "Q1 Show tables",
+        "duration": 6.290988,
+        "rows": 1,
+        "data": [
+          {
+            "name": "performance_test"
+          }
+        ]
+      },
+      {
+        "name": "Q2 Explore schema with sample data",
+        "duration": 6.784321,
+        "rows": 10,
+        "data": [
+          {
+            "hex": "1d75d0",
+            "flight": "RIDER85 ",
+            "aircraft_type": "C172",
+            "lat": 54.927273,
+            "lon": -8.901559,
+            "alt_baro": 34012,
+            "gs": 476,
+            "track": 9,
+            "timestamp": "2025-08-12 23:37:31",
+            "alt_baro_is_ground": false,
+            "nav_qnh": 0,
+            "category": "A5"
+          },
+          {
+            "hex": "9c3d75",
+            "flight": "SWA7958",
+            "aircraft_type": "B752",
+            "lat": 32.22832,
+            "lon": -111.277083,
+            "alt_baro": 12134,
+            "gs": 337,
+            "track": 146,
+            "timestamp": "2025-08-12 23:28:30",
+            "alt_baro_is_ground": false,
+            "nav_qnh": 1019,
+            "category": "B1"
+          },
+          {
+            "hex": "5ca260",
+            "flight": "UAL7343",
+            "aircraft_type": "B738",
+            "lat": 37.587661,
+            "lon": -2.077432,
+            "alt_baro": 10057,
+            "gs": 503,
+            "track": 28,
+            "timestamp": "2025-08-12 23:13:57",
+            "alt_baro_is_ground": false,
+            "nav_qnh": 0,
+            "category": "C2"
+          },
+          {
+            "hex": "1908b1",
+            "flight": "DAL9026",
+            "aircraft_type": "CRJ2",
+            "lat": 49.383326,
+            "lon": 10.629234,
+            "alt_baro": 36847,
+            "gs": 274,
+            "track": 53,
+            "timestamp": "2025-08-12 23:04:49",
+            "alt_baro_is_ground": false,
+            "nav_qnh": 0,
+            "category": "A7"
+          },
+          {
+            "hex": "036bde",
+            "flight": "TETON4777",
+            "aircraft_type": "B738",
+            "lat": 50.629335,
+            "lon": 1.565679,
+            "alt_baro": 6501,
+            "gs": 131,
+            "track": 310,
+            "timestamp": "2025-08-12 22:56:23",
+            "alt_baro_is_ground": false,
+            "nav_qnh": 1035,
+            "category": "A5"
+          },
+          {
+            "hex": "9044d7",
+            "flight": "CTM5885",
+            "aircraft_type": "PA28",
+            "lat": 47.306981,
+            "lon": -119.555293,
+            "alt_baro": 22918,
+            "gs": 183,
+            "track": 132,
+            "timestamp": "2025-08-12 22:38:21",
+            "alt_baro_is_ground": false,
+            "nav_qnh": 995,
+            "category": "A5"
+          },
+          {
+            "hex": "15b34d",
+            "flight": "TETON57 ",
+            "aircraft_type": "B777",
+            "lat": 51.333802,
+            "lon": 1.017051,
+            "alt_baro": 2969,
+            "gs": 109,
+            "track": 40,
+            "timestamp": "2025-08-12 22:13:51",
+            "alt_baro_is_ground": false,
+            "nav_qnh": 989,
+            "category": "A3"
+          },
+          {
+            "hex": "9c3d75",
+            "flight": "SWA7958",
+            "aircraft_type": "PA28",
+            "lat": 39.642999,
+            "lon": -48.987203,
+            "alt_baro": 4011,
+            "gs": 521,
+            "track": 327,
+            "timestamp": "2025-08-12 22:04:54",
+            "alt_baro_is_ground": false,
+            "nav_qnh": 0,
+            "category": "B1"
+          },
+          {
+            "hex": "630cdd",
+            "flight": "REACH9964",
+            "aircraft_type": "PA28",
+            "lat": 38.793993,
+            "lon": -106.1878,
+            "alt_baro": 13904,
+            "gs": 175,
+            "track": 254,
+            "timestamp": "2025-08-12 21:37:14",
+            "alt_baro_is_ground": false,
+            "nav_qnh": 1011,
+            "category": "B1"
+          },
+          {
+            "hex": "48889a",
+            "flight": "DAL5767",
+            "aircraft_type": "",
+            "lat": 46.220096,
+            "lon": -111.721358,
+            "alt_baro": 36080,
+            "gs": 232,
+            "track": 106,
+            "timestamp": "2025-08-12 21:27:46",
+            "alt_baro_is_ground": false,
+            "nav_qnh": 1021,
+            "category": "A1"
+          }
+        ]
+      },
+      {
+        "name": "Q3 Hourly aircraft count - today",
+        "duration": 4.871726,
+        "rows": 24,
+        "data": [
+          {
+            "hour_bucket": "2025-08-12 00:00:00",
+            "unique_aircraft_count": "6"
+          },
+          {
+            "hour_bucket": "2025-08-12 01:00:00",
+            "unique_aircraft_count": "4"
+          },
+          {
+            "hour_bucket": "2025-08-12 02:00:00",
+            "unique_aircraft_count": "3"
+          },
+          {
+            "hour_bucket": "2025-08-12 03:00:00",
+            "unique_aircraft_count": "3"
+          },
+          {
+            "hour_bucket": "2025-08-12 04:00:00",
+            "unique_aircraft_count": "2"
+          },
+          {
+            "hour_bucket": "2025-08-12 05:00:00",
+            "unique_aircraft_count": "5"
+          },
+          {
+            "hour_bucket": "2025-08-12 06:00:00",
+            "unique_aircraft_count": "3"
+          },
+          {
+            "hour_bucket": "2025-08-12 07:00:00",
+            "unique_aircraft_count": "7"
+          },
+          {
+            "hour_bucket": "2025-08-12 08:00:00",
+            "unique_aircraft_count": "6"
+          },
+          {
+            "hour_bucket": "2025-08-12 09:00:00",
+            "unique_aircraft_count": "9"
+          },
+          {
+            "hour_bucket": "2025-08-12 10:00:00",
+            "unique_aircraft_count": "4"
+          },
+          {
+            "hour_bucket": "2025-08-12 11:00:00",
+            "unique_aircraft_count": "5"
+          },
+          {
+            "hour_bucket": "2025-08-12 12:00:00",
+            "unique_aircraft_count": "7"
+          },
+          {
+            "hour_bucket": "2025-08-12 13:00:00",
+            "unique_aircraft_count": "7"
+          },
+          {
+            "hour_bucket": "2025-08-12 14:00:00",
+            "unique_aircraft_count": "7"
+          },
+          {
+            "hour_bucket": "2025-08-12 15:00:00",
+            "unique_aircraft_count": "4"
+          },
+          {
+            "hour_bucket": "2025-08-12 16:00:00",
+            "unique_aircraft_count": "7"
+          },
+          {
+            "hour_bucket": "2025-08-12 17:00:00",
+            "unique_aircraft_count": "5"
+          },
+          {
+            "hour_bucket": "2025-08-12 18:00:00",
+            "unique_aircraft_count": "6"
+          },
+          {
+            "hour_bucket": "2025-08-12 19:00:00",
+            "unique_aircraft_count": "8"
+          },
+          {
+            "hour_bucket": "2025-08-12 20:00:00",
+            "unique_aircraft_count": "3"
+          },
+          {
+            "hour_bucket": "2025-08-12 21:00:00",
+            "unique_aircraft_count": "5"
+          },
+          {
+            "hour_bucket": "2025-08-12 22:00:00",
+            "unique_aircraft_count": "4"
+          },
+          {
+            "hour_bucket": "2025-08-12 23:00:00",
+            "unique_aircraft_count": "4"
+          }
+        ]
+      },
+      {
+        "name": "Q4 Hourly aircraft count - day before yesterday",
+        "duration": 4.471604,
+        "rows": 24,
+        "data": [
+          {
+            "hour_bucket": "2025-08-10 00:00:00",
+            "unique_aircraft_count": "7",
+            "avg_altitude": 20193.428571428572
+          },
+          {
+            "hour_bucket": "2025-08-10 01:00:00",
+            "unique_aircraft_count": "5",
+            "avg_altitude": 18401.8
+          },
+          {
+            "hour_bucket": "2025-08-10 02:00:00",
+            "unique_aircraft_count": "3",
+            "avg_altitude": 12408.666666666666
+          },
+          {
+            "hour_bucket": "2025-08-10 03:00:00",
+            "unique_aircraft_count": "3",
+            "avg_altitude": 27602
+          },
+          {
+            "hour_bucket": "2025-08-10 04:00:00",
+            "unique_aircraft_count": "7",
+            "avg_altitude": 18127.85714285714
+          },
+          {
+            "hour_bucket": "2025-08-10 05:00:00",
+            "unique_aircraft_count": "7",
+            "avg_altitude": 12826
+          },
+          {
+            "hour_bucket": "2025-08-10 06:00:00",
+            "unique_aircraft_count": "10",
+            "avg_altitude": 18860.2
+          },
+          {
+            "hour_bucket": "2025-08-10 07:00:00",
+            "unique_aircraft_count": "7",
+            "avg_altitude": 23345.428571428572
+          },
+          {
+            "hour_bucket": "2025-08-10 08:00:00",
+            "unique_aircraft_count": "7",
+            "avg_altitude": 22765.285714285714
+          },
+          {
+            "hour_bucket": "2025-08-10 09:00:00",
+            "unique_aircraft_count": "11",
+            "avg_altitude": 17554.18181818182
+          },
+          {
+            "hour_bucket": "2025-08-10 10:00:00",
+            "unique_aircraft_count": "8",
+            "avg_altitude": 22720.5
+          },
+          {
+            "hour_bucket": "2025-08-10 11:00:00",
+            "unique_aircraft_count": "7",
+            "avg_altitude": 17346.285714285714
+          },
+          {
+            "hour_bucket": "2025-08-10 12:00:00",
+            "unique_aircraft_count": "10",
+            "avg_altitude": 20221
+          },
+          {
+            "hour_bucket": "2025-08-10 13:00:00",
+            "unique_aircraft_count": "8",
+            "avg_altitude": 23966.25
+          },
+          {
+            "hour_bucket": "2025-08-10 14:00:00",
+            "unique_aircraft_count": "4",
+            "avg_altitude": 11765.25
+          },
+          {
+            "hour_bucket": "2025-08-10 15:00:00",
+            "unique_aircraft_count": "9",
+            "avg_altitude": 13744
+          },
+          {
+            "hour_bucket": "2025-08-10 16:00:00",
+            "unique_aircraft_count": "3",
+            "avg_altitude": 25782
+          },
+          {
+            "hour_bucket": "2025-08-10 17:00:00",
+            "unique_aircraft_count": "5",
+            "avg_altitude": 15154.6
+          },
+          {
+            "hour_bucket": "2025-08-10 18:00:00",
+            "unique_aircraft_count": "5",
+            "avg_altitude": 18411.4
+          },
+          {
+            "hour_bucket": "2025-08-10 19:00:00",
+            "unique_aircraft_count": "5",
+            "avg_altitude": 17926
+          },
+          {
+            "hour_bucket": "2025-08-10 20:00:00",
+            "unique_aircraft_count": "3",
+            "avg_altitude": 27419.666666666668
+          },
+          {
+            "hour_bucket": "2025-08-10 21:00:00",
+            "unique_aircraft_count": "6",
+            "avg_altitude": 23833
+          },
+          {
+            "hour_bucket": "2025-08-10 22:00:00",
+            "unique_aircraft_count": "5",
+            "avg_altitude": 19358.6
+          },
+          {
+            "hour_bucket": "2025-08-10 23:00:00",
+            "unique_aircraft_count": "5",
+            "avg_altitude": 23357.8
+          }
+        ]
+      }
+    ],
+    "totalQueryTime": 22.418639,
+    "totalTime": 23.138076
+  },
+  {
+    "configuration": {
+      "rowCount": 1000,
+      "withIndex": true,
+      "database": "postgresql"
+    },
+    "setupTime": 0,
+    "queryResults": [
+      {
+        "name": "Q1 Show tables",
+        "duration": 2.363431,
+        "rows": 1,
+        "data": [
+          {
+            "table_name": "performance_test"
+          }
+        ]
+      },
+      {
+        "name": "Q2 Explore schema with sample data",
+        "duration": 1.358481,
+        "rows": 10,
+        "data": [
+          {
+            "hex": "ac6f91",
+            "flight": "AFR5574",
+            "aircraft_type": "PA28",
+            "lat": 43.995983,
+            "lon": -0.622621,
+            "alt_baro": 26237,
+            "gs": 170,
+            "track": 300,
+            "timestamp": "2025-08-12T23:44:54.000Z",
+            "alt_baro_is_ground": false,
+            "nav_qnh": 997,
+            "category": "A3"
+          },
+          {
+            "hex": "a59f79",
+            "flight": "BAW7849",
+            "aircraft_type": "B752",
+            "lat": 57.752243,
+            "lon": 2.915062,
+            "alt_baro": 1477,
+            "gs": 125,
+            "track": 248,
+            "timestamp": "2025-08-12T23:37:44.000Z",
+            "alt_baro_is_ground": false,
+            "nav_qnh": 990,
+            "category": "C2"
+          },
+          {
+            "hex": "c12919",
+            "flight": "ASA2400",
+            "aircraft_type": "CRJ2",
+            "lat": 34.73277,
+            "lon": -120.718728,
+            "alt_baro": 4728,
+            "gs": 411,
+            "track": 193,
+            "timestamp": "2025-08-12T23:19:22.000Z",
+            "alt_baro_is_ground": false,
+            "nav_qnh": 989,
+            "category": "C1"
+          },
+          {
+            "hex": "30f377",
+            "flight": "CTM4789",
+            "aircraft_type": "B777",
+            "lat": 34.28897,
+            "lon": -113.885212,
+            "alt_baro": 37802,
+            "gs": 576,
+            "track": 325,
+            "timestamp": "2025-08-12T23:00:32.000Z",
+            "alt_baro_is_ground": false,
+            "nav_qnh": 1018,
+            "category": "A2"
+          },
+          {
+            "hex": "e2b93a",
+            "flight": "BAW5585",
+            "aircraft_type": "C172",
+            "lat": 30.709223,
+            "lon": -65.026766,
+            "alt_baro": 28464,
+            "gs": 177,
+            "track": 8,
+            "timestamp": "2025-08-12T22:56:22.000Z",
+            "alt_baro_is_ground": false,
+            "nav_qnh": 1017,
+            "category": "A6"
+          },
+          {
+            "hex": "3cb141",
+            "flight": "SWA3712",
+            "aircraft_type": "B777",
+            "lat": 43.577259,
+            "lon": -49.347967,
+            "alt_baro": 3727,
+            "gs": 357,
+            "track": 55,
+            "timestamp": "2025-08-12T22:52:19.000Z",
+            "alt_baro_is_ground": false,
+            "nav_qnh": 991,
+            "category": "C1"
+          },
+          {
+            "hex": "de0491",
+            "flight": "CTM9286",
+            "aircraft_type": null,
+            "lat": 47.378776,
+            "lon": -113.749057,
+            "alt_baro": 24541,
+            "gs": 574,
+            "track": 131,
+            "timestamp": "2025-08-12T22:44:51.000Z",
+            "alt_baro_is_ground": false,
+            "nav_qnh": 999,
+            "category": "A2"
+          },
+          {
+            "hex": "871239",
+            "flight": "AFR1084",
+            "aircraft_type": "B777",
+            "lat": 35.049574,
+            "lon": -122.855352,
+            "alt_baro": 33669,
+            "gs": 177,
+            "track": 275,
+            "timestamp": "2025-08-12T22:27:42.000Z",
+            "alt_baro_is_ground": false,
+            "nav_qnh": null,
+            "category": "A5"
+          },
+          {
+            "hex": "ca901e",
+            "flight": "REACH8503",
+            "aircraft_type": "CRJ2",
+            "lat": 40.948947,
+            "lon": -74.219551,
+            "alt_baro": 28535,
+            "gs": 315,
+            "track": 57,
+            "timestamp": "2025-08-12T22:27:07.000Z",
+            "alt_baro_is_ground": false,
+            "nav_qnh": null,
+            "category": "A6"
+          },
+          {
+            "hex": "d0951b",
+            "flight": "AAL5882",
+            "aircraft_type": "DH8D",
+            "lat": 38.750628,
+            "lon": -30.736708,
+            "alt_baro": 2180,
+            "gs": 236,
+            "track": 221,
+            "timestamp": "2025-08-12T22:26:41.000Z",
+            "alt_baro_is_ground": false,
+            "nav_qnh": 1003,
+            "category": "B2"
+          }
+        ]
+      },
+      {
+        "name": "Q3 Hourly aircraft count - today",
+        "duration": 1.437088,
+        "rows": 24,
+        "data": [
+          {
+            "hour_bucket": "2025-08-12T00:00:00.000Z",
+            "unique_aircraft_count": "3"
+          },
+          {
+            "hour_bucket": "2025-08-12T01:00:00.000Z",
+            "unique_aircraft_count": "13"
+          },
+          {
+            "hour_bucket": "2025-08-12T02:00:00.000Z",
+            "unique_aircraft_count": "3"
+          },
+          {
+            "hour_bucket": "2025-08-12T03:00:00.000Z",
+            "unique_aircraft_count": "6"
+          },
+          {
+            "hour_bucket": "2025-08-12T04:00:00.000Z",
+            "unique_aircraft_count": "6"
+          },
+          {
+            "hour_bucket": "2025-08-12T05:00:00.000Z",
+            "unique_aircraft_count": "3"
+          },
+          {
+            "hour_bucket": "2025-08-12T06:00:00.000Z",
+            "unique_aircraft_count": "4"
+          },
+          {
+            "hour_bucket": "2025-08-12T07:00:00.000Z",
+            "unique_aircraft_count": "15"
+          },
+          {
+            "hour_bucket": "2025-08-12T08:00:00.000Z",
+            "unique_aircraft_count": "6"
+          },
+          {
+            "hour_bucket": "2025-08-12T09:00:00.000Z",
+            "unique_aircraft_count": "7"
+          },
+          {
+            "hour_bucket": "2025-08-12T10:00:00.000Z",
+            "unique_aircraft_count": "6"
+          },
+          {
+            "hour_bucket": "2025-08-12T11:00:00.000Z",
+            "unique_aircraft_count": "3"
+          },
+          {
+            "hour_bucket": "2025-08-12T12:00:00.000Z",
+            "unique_aircraft_count": "2"
+          },
+          {
+            "hour_bucket": "2025-08-12T13:00:00.000Z",
+            "unique_aircraft_count": "8"
+          },
+          {
+            "hour_bucket": "2025-08-12T14:00:00.000Z",
+            "unique_aircraft_count": "3"
+          },
+          {
+            "hour_bucket": "2025-08-12T15:00:00.000Z",
+            "unique_aircraft_count": "6"
+          },
+          {
+            "hour_bucket": "2025-08-12T16:00:00.000Z",
+            "unique_aircraft_count": "1"
+          },
+          {
+            "hour_bucket": "2025-08-12T17:00:00.000Z",
+            "unique_aircraft_count": "7"
+          },
+          {
+            "hour_bucket": "2025-08-12T18:00:00.000Z",
+            "unique_aircraft_count": "4"
+          },
+          {
+            "hour_bucket": "2025-08-12T19:00:00.000Z",
+            "unique_aircraft_count": "3"
+          },
+          {
+            "hour_bucket": "2025-08-12T20:00:00.000Z",
+            "unique_aircraft_count": "11"
+          },
+          {
+            "hour_bucket": "2025-08-12T21:00:00.000Z",
+            "unique_aircraft_count": "4"
+          },
+          {
+            "hour_bucket": "2025-08-12T22:00:00.000Z",
+            "unique_aircraft_count": "9"
+          },
+          {
+            "hour_bucket": "2025-08-12T23:00:00.000Z",
+            "unique_aircraft_count": "4"
+          }
+        ]
+      },
+      {
+        "name": "Q4 Hourly aircraft count - day before yesterday",
+        "duration": 0.76999,
+        "rows": 24,
+        "data": [
+          {
+            "hour_bucket": "2025-08-10T00:00:00.000Z",
+            "unique_aircraft_count": "6",
+            "avg_altitude": "25306.333333333333"
+          },
+          {
+            "hour_bucket": "2025-08-10T01:00:00.000Z",
+            "unique_aircraft_count": "6",
+            "avg_altitude": "22899.000000000000"
+          },
+          {
+            "hour_bucket": "2025-08-10T02:00:00.000Z",
+            "unique_aircraft_count": "4",
+            "avg_altitude": "21130.500000000000"
+          },
+          {
+            "hour_bucket": "2025-08-10T03:00:00.000Z",
+            "unique_aircraft_count": "6",
+            "avg_altitude": "10687.8333333333333333"
+          },
+          {
+            "hour_bucket": "2025-08-10T04:00:00.000Z",
+            "unique_aircraft_count": "6",
+            "avg_altitude": "24130.666666666667"
+          },
+          {
+            "hour_bucket": "2025-08-10T05:00:00.000Z",
+            "unique_aircraft_count": "5",
+            "avg_altitude": "8912.8000000000000000"
+          },
+          {
+            "hour_bucket": "2025-08-10T06:00:00.000Z",
+            "unique_aircraft_count": "8",
+            "avg_altitude": "23778.875000000000"
+          },
+          {
+            "hour_bucket": "2025-08-10T07:00:00.000Z",
+            "unique_aircraft_count": "8",
+            "avg_altitude": "21044.625000000000"
+          },
+          {
+            "hour_bucket": "2025-08-10T08:00:00.000Z",
+            "unique_aircraft_count": "3",
+            "avg_altitude": "19531.000000000000"
+          },
+          {
+            "hour_bucket": "2025-08-10T09:00:00.000Z",
+            "unique_aircraft_count": "9",
+            "avg_altitude": "25505.888888888889"
+          },
+          {
+            "hour_bucket": "2025-08-10T10:00:00.000Z",
+            "unique_aircraft_count": "5",
+            "avg_altitude": "25280.166666666667"
+          },
+          {
+            "hour_bucket": "2025-08-10T11:00:00.000Z",
+            "unique_aircraft_count": "5",
+            "avg_altitude": "19695.800000000000"
+          },
+          {
+            "hour_bucket": "2025-08-10T12:00:00.000Z",
+            "unique_aircraft_count": "8",
+            "avg_altitude": "19229.625000000000"
+          },
+          {
+            "hour_bucket": "2025-08-10T13:00:00.000Z",
+            "unique_aircraft_count": "6",
+            "avg_altitude": "15718.500000000000"
+          },
+          {
+            "hour_bucket": "2025-08-10T14:00:00.000Z",
+            "unique_aircraft_count": "6",
+            "avg_altitude": "24988.833333333333"
+          },
+          {
+            "hour_bucket": "2025-08-10T15:00:00.000Z",
+            "unique_aircraft_count": "6",
+            "avg_altitude": "29907.833333333333"
+          },
+          {
+            "hour_bucket": "2025-08-10T16:00:00.000Z",
+            "unique_aircraft_count": "4",
+            "avg_altitude": "16452.000000000000"
+          },
+          {
+            "hour_bucket": "2025-08-10T17:00:00.000Z",
+            "unique_aircraft_count": "2",
+            "avg_altitude": "24517.000000000000"
+          },
+          {
+            "hour_bucket": "2025-08-10T18:00:00.000Z",
+            "unique_aircraft_count": "9",
+            "avg_altitude": "10382.6000000000000000"
+          },
+          {
+            "hour_bucket": "2025-08-10T19:00:00.000Z",
+            "unique_aircraft_count": "1",
+            "avg_altitude": "12153.0000000000000000"
+          },
+          {
+            "hour_bucket": "2025-08-10T20:00:00.000Z",
+            "unique_aircraft_count": "8",
+            "avg_altitude": "14438.000000000000"
+          },
+          {
+            "hour_bucket": "2025-08-10T21:00:00.000Z",
+            "unique_aircraft_count": "7",
+            "avg_altitude": "8844.5714285714285714"
+          },
+          {
+            "hour_bucket": "2025-08-10T22:00:00.000Z",
+            "unique_aircraft_count": "2",
+            "avg_altitude": "29803.500000000000"
+          },
+          {
+            "hour_bucket": "2025-08-10T23:00:00.000Z",
+            "unique_aircraft_count": "5",
+            "avg_altitude": "26855.200000000000"
+          }
+        ]
+      }
+    ],
+    "totalQueryTime": 5.92899,
+    "totalTime": 6.346612
+  },
+  {
+    "configuration": {
+      "rowCount": 1000,
+      "withIndex": false,
+      "database": "postgresql"
+    },
+    "setupTime": 0,
+    "queryResults": [
+      {
+        "name": "Q1 Show tables",
+        "duration": 2.171842,
+        "rows": 1,
+        "data": [
+          {
+            "table_name": "performance_test"
+          }
+        ]
+      },
+      {
+        "name": "Q2 Explore schema with sample data",
+        "duration": 1.401802,
+        "rows": 10,
+        "data": [
+          {
+            "hex": "4f9b37",
+            "flight": "ASA1057",
+            "aircraft_type": null,
+            "lat": 28.859404,
+            "lon": -72.531956,
+            "alt_baro": 4822,
+            "gs": 515,
+            "track": 37,
+            "timestamp": "2025-08-12T23:41:55.000Z",
+            "alt_baro_is_ground": false,
+            "nav_qnh": 1008,
+            "category": "C2"
+          },
+          {
+            "hex": "2921a7",
+            "flight": "AFR2134",
+            "aircraft_type": "PA28",
+            "lat": 41.745338,
+            "lon": -42.8517,
+            "alt_baro": 9487,
+            "gs": 317,
+            "track": 153,
+            "timestamp": "2025-08-12T23:41:26.000Z",
+            "alt_baro_is_ground": false,
+            "nav_qnh": 996,
+            "category": "C1"
+          },
+          {
+            "hex": "4773bd",
+            "flight": "REACH3556",
+            "aircraft_type": "C172",
+            "lat": 38.044878,
+            "lon": -66.010729,
+            "alt_baro": 7380,
+            "gs": 540,
+            "track": 356,
+            "timestamp": "2025-08-12T23:28:48.000Z",
+            "alt_baro_is_ground": false,
+            "nav_qnh": 1024,
+            "category": "C2"
+          },
+          {
+            "hex": "3f753b",
+            "flight": "SKW1355",
+            "aircraft_type": "DH8D",
+            "lat": 44.870348,
+            "lon": -65.278904,
+            "alt_baro": 27657,
+            "gs": 394,
+            "track": 297,
+            "timestamp": "2025-08-12T23:27:50.000Z",
+            "alt_baro_is_ground": false,
+            "nav_qnh": 1021,
+            "category": "A6"
+          },
+          {
+            "hex": "8fde75",
+            "flight": "KNIFE97 ",
+            "aircraft_type": "B777",
+            "lat": 39.145202,
+            "lon": -5.893445,
+            "alt_baro": 6088,
+            "gs": 563,
+            "track": 224,
+            "timestamp": "2025-08-12T23:11:48.000Z",
+            "alt_baro_is_ground": false,
+            "nav_qnh": 1007,
+            "category": "C2"
+          },
+          {
+            "hex": "89afe8",
+            "flight": "UAL6413",
+            "aircraft_type": null,
+            "lat": 37.819586,
+            "lon": -7.628986,
+            "alt_baro": 25498,
+            "gs": 277,
+            "track": 227,
+            "timestamp": "2025-08-12T23:04:52.000Z",
+            "alt_baro_is_ground": false,
+            "nav_qnh": null,
+            "category": "A7"
+          },
+          {
+            "hex": "07f92b",
+            "flight": "DAL2233",
+            "aircraft_type": "E145",
+            "lat": 33.174657,
+            "lon": -75.794437,
+            "alt_baro": 20828,
+            "gs": 336,
+            "track": 170,
+            "timestamp": "2025-08-12T22:44:40.000Z",
+            "alt_baro_is_ground": false,
+            "nav_qnh": 1006,
+            "category": "A4"
+          },
+          {
+            "hex": "74d8cf",
+            "flight": "AAL1600",
+            "aircraft_type": "C172",
+            "lat": 48.784274,
+            "lon": 16.113296,
+            "alt_baro": 37062,
+            "gs": 400,
+            "track": 333,
+            "timestamp": "2025-08-12T22:26:28.000Z",
+            "alt_baro_is_ground": false,
+            "nav_qnh": 1022,
+            "category": "A7"
+          },
+          {
+            "hex": "30f377",
+            "flight": "CTM4789",
+            "aircraft_type": null,
+            "lat": 56.343352,
+            "lon": -8.134185,
+            "alt_baro": 28872,
+            "gs": 419,
+            "track": 38,
+            "timestamp": "2025-08-12T22:17:30.000Z",
+            "alt_baro_is_ground": false,
+            "nav_qnh": 1032,
+            "category": "A2"
+          },
+          {
+            "hex": "667bae",
+            "flight": "BAW1416",
+            "aircraft_type": "A320",
+            "lat": 39.644139,
+            "lon": -46.976582,
+            "alt_baro": 20728,
+            "gs": 358,
+            "track": 113,
+            "timestamp": "2025-08-12T22:12:48.000Z",
+            "alt_baro_is_ground": false,
+            "nav_qnh": 1017,
+            "category": "A1"
+          }
+        ]
+      },
+      {
+        "name": "Q3 Hourly aircraft count - today",
+        "duration": 1.00529,
+        "rows": 24,
+        "data": [
+          {
+            "hour_bucket": "2025-08-12T00:00:00.000Z",
+            "unique_aircraft_count": "5"
+          },
+          {
+            "hour_bucket": "2025-08-12T01:00:00.000Z",
+            "unique_aircraft_count": "4"
+          },
+          {
+            "hour_bucket": "2025-08-12T02:00:00.000Z",
+            "unique_aircraft_count": "7"
+          },
+          {
+            "hour_bucket": "2025-08-12T03:00:00.000Z",
+            "unique_aircraft_count": "8"
+          },
+          {
+            "hour_bucket": "2025-08-12T04:00:00.000Z",
+            "unique_aircraft_count": "10"
+          },
+          {
+            "hour_bucket": "2025-08-12T05:00:00.000Z",
+            "unique_aircraft_count": "6"
+          },
+          {
+            "hour_bucket": "2025-08-12T06:00:00.000Z",
+            "unique_aircraft_count": "2"
+          },
+          {
+            "hour_bucket": "2025-08-12T07:00:00.000Z",
+            "unique_aircraft_count": "7"
+          },
+          {
+            "hour_bucket": "2025-08-12T08:00:00.000Z",
+            "unique_aircraft_count": "11"
+          },
+          {
+            "hour_bucket": "2025-08-12T09:00:00.000Z",
+            "unique_aircraft_count": "7"
+          },
+          {
+            "hour_bucket": "2025-08-12T10:00:00.000Z",
+            "unique_aircraft_count": "3"
+          },
+          {
+            "hour_bucket": "2025-08-12T11:00:00.000Z",
+            "unique_aircraft_count": "9"
+          },
+          {
+            "hour_bucket": "2025-08-12T12:00:00.000Z",
+            "unique_aircraft_count": "3"
+          },
+          {
+            "hour_bucket": "2025-08-12T13:00:00.000Z",
+            "unique_aircraft_count": "7"
+          },
+          {
+            "hour_bucket": "2025-08-12T14:00:00.000Z",
+            "unique_aircraft_count": "6"
+          },
+          {
+            "hour_bucket": "2025-08-12T15:00:00.000Z",
+            "unique_aircraft_count": "8"
+          },
+          {
+            "hour_bucket": "2025-08-12T16:00:00.000Z",
+            "unique_aircraft_count": "7"
+          },
+          {
+            "hour_bucket": "2025-08-12T17:00:00.000Z",
+            "unique_aircraft_count": "2"
+          },
+          {
+            "hour_bucket": "2025-08-12T18:00:00.000Z",
+            "unique_aircraft_count": "5"
+          },
+          {
+            "hour_bucket": "2025-08-12T19:00:00.000Z",
+            "unique_aircraft_count": "4"
+          },
+          {
+            "hour_bucket": "2025-08-12T20:00:00.000Z",
+            "unique_aircraft_count": "10"
+          },
+          {
+            "hour_bucket": "2025-08-12T21:00:00.000Z",
+            "unique_aircraft_count": "5"
+          },
+          {
+            "hour_bucket": "2025-08-12T22:00:00.000Z",
+            "unique_aircraft_count": "7"
+          },
+          {
+            "hour_bucket": "2025-08-12T23:00:00.000Z",
+            "unique_aircraft_count": "6"
+          }
+        ]
+      },
+      {
+        "name": "Q4 Hourly aircraft count - day before yesterday",
+        "duration": 0.9903,
+        "rows": 24,
+        "data": [
+          {
+            "hour_bucket": "2025-08-10T00:00:00.000Z",
+            "unique_aircraft_count": "7",
+            "avg_altitude": "19697.714285714286"
+          },
+          {
+            "hour_bucket": "2025-08-10T01:00:00.000Z",
+            "unique_aircraft_count": "6",
+            "avg_altitude": "19628.000000000000"
+          },
+          {
+            "hour_bucket": "2025-08-10T02:00:00.000Z",
+            "unique_aircraft_count": "7",
+            "avg_altitude": "20430.285714285714"
+          },
+          {
+            "hour_bucket": "2025-08-10T03:00:00.000Z",
+            "unique_aircraft_count": "5",
+            "avg_altitude": "19680.333333333333"
+          },
+          {
+            "hour_bucket": "2025-08-10T04:00:00.000Z",
+            "unique_aircraft_count": "7",
+            "avg_altitude": "23181.571428571429"
+          },
+          {
+            "hour_bucket": "2025-08-10T05:00:00.000Z",
+            "unique_aircraft_count": "8",
+            "avg_altitude": "20438.250000000000"
+          },
+          {
+            "hour_bucket": "2025-08-10T06:00:00.000Z",
+            "unique_aircraft_count": "2",
+            "avg_altitude": "30847.000000000000"
+          },
+          {
+            "hour_bucket": "2025-08-10T07:00:00.000Z",
+            "unique_aircraft_count": "7",
+            "avg_altitude": "24813.714285714286"
+          },
+          {
+            "hour_bucket": "2025-08-10T08:00:00.000Z",
+            "unique_aircraft_count": "3",
+            "avg_altitude": "20604.666666666667"
+          },
+          {
+            "hour_bucket": "2025-08-10T09:00:00.000Z",
+            "unique_aircraft_count": "4",
+            "avg_altitude": "12825.250000000000"
+          },
+          {
+            "hour_bucket": "2025-08-10T10:00:00.000Z",
+            "unique_aircraft_count": "7",
+            "avg_altitude": "12346.857142857143"
+          },
+          {
+            "hour_bucket": "2025-08-10T11:00:00.000Z",
+            "unique_aircraft_count": "6",
+            "avg_altitude": "20542.333333333333"
+          },
+          {
+            "hour_bucket": "2025-08-10T12:00:00.000Z",
+            "unique_aircraft_count": "3",
+            "avg_altitude": "28729.000000000000"
+          },
+          {
+            "hour_bucket": "2025-08-10T13:00:00.000Z",
+            "unique_aircraft_count": "7",
+            "avg_altitude": "20483.142857142857"
+          },
+          {
+            "hour_bucket": "2025-08-10T14:00:00.000Z",
+            "unique_aircraft_count": "4",
+            "avg_altitude": "17782.000000000000"
+          },
+          {
+            "hour_bucket": "2025-08-10T15:00:00.000Z",
+            "unique_aircraft_count": "8",
+            "avg_altitude": "21538.000000000000"
+          },
+          {
+            "hour_bucket": "2025-08-10T16:00:00.000Z",
+            "unique_aircraft_count": "7",
+            "avg_altitude": "21686.714285714286"
+          },
+          {
+            "hour_bucket": "2025-08-10T17:00:00.000Z",
+            "unique_aircraft_count": "5",
+            "avg_altitude": "18846.400000000000"
+          },
+          {
+            "hour_bucket": "2025-08-10T18:00:00.000Z",
+            "unique_aircraft_count": "5",
+            "avg_altitude": "18509.200000000000"
+          },
+          {
+            "hour_bucket": "2025-08-10T19:00:00.000Z",
+            "unique_aircraft_count": "5",
+            "avg_altitude": "14671.200000000000"
+          },
+          {
+            "hour_bucket": "2025-08-10T20:00:00.000Z",
+            "unique_aircraft_count": "6",
+            "avg_altitude": "16495.500000000000"
+          },
+          {
+            "hour_bucket": "2025-08-10T21:00:00.000Z",
+            "unique_aircraft_count": "10",
+            "avg_altitude": "22676.000000000000"
+          },
+          {
+            "hour_bucket": "2025-08-10T22:00:00.000Z",
+            "unique_aircraft_count": "4",
+            "avg_altitude": "10955.2500000000000000"
+          },
+          {
+            "hour_bucket": "2025-08-10T23:00:00.000Z",
+            "unique_aircraft_count": "5",
+            "avg_altitude": "25299.600000000000"
+          }
+        ]
+      }
+    ],
+    "totalQueryTime": 5.569234,
+    "totalTime": 5.947632
+  }
+]

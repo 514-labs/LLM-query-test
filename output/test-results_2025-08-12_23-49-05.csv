@@ -1,0 +1,4 @@
+Database,Rows,Index,Q1_Show_table_ms,Q2_Select_limit_ms,Q3_Hourly_count_ms,Q4_Average_calculation_ms,Total_time_ms,Conversation_time_ms,Session_time_ms,Setup_time_ms
+clickhouse,1000,no,6.37,8.43,5.63,4.80,26.05,130.23,78.14,0.00
+postgresql,1000,yes,2.51,1.44,1.43,0.76,6.45,32.23,19.34,0.00
+postgresql,1000,no,2.25,1.42,1.01,0.98,5.96,29.80,17.88,0.00
