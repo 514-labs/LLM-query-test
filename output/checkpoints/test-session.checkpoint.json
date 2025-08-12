@@ -1,25 +1,19 @@
 {
-  "sessionId": "session_1754374074357_y02y0c1er",
-  "timestamp": "2025-08-05T06:07:54.357Z",
-  "totalConfigurations": 3,
+  "sessionId": "session_1755042241542_kjj1pfr6x",
+  "timestamp": "2025-08-12T23:44:01.542Z",
+  "totalConfigurations": 1,
   "completedConfigurations": [],
   "pendingConfigurations": [
     {
-      "rowCount": 25000000,
+      "rowCount": 10000000,
       "withIndex": false,
       "database": "clickhouse"
-    },
-    {
-      "rowCount": 25000000,
-      "withIndex": true,
-      "database": "postgresql"
-    },
-    {
-      "rowCount": 25000000,
-      "withIndex": false,
-      "database": "postgresql"
     }
   ],
   "partialResults": [],
-  "testType": "load"
+  "testType": "query-only",
+  "queryOnlySettings": {
+    "iterations": 1,
+    "timeLimitMinutes": 1
+  }
 }

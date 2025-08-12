@@ -45,6 +45,42 @@ export class PerformanceTester {
     this.dataGenerator = new DataGenerator(seed || process.env.BENCHMARK_SEED);
   }
 
+  /**
+   * Filter database configurations based on user selection
+   * @param databases Array of selected database types or undefined for all
+   * @returns Filtered array of test configurations
+   */
+  private filterDatabaseConfigurations(databases?: string[]): TestConfiguration[] {
+    const allConfigurations: TestConfiguration[] = [
+      { rowCount: appConfig.test.datasetSize, withIndex: false, database: DATABASE_TYPES.CLICKHOUSE },
+      { rowCount: appConfig.test.datasetSize, withIndex: true, database: DATABASE_TYPES.POSTGRESQL },
+      { rowCount: appConfig.test.datasetSize, withIndex: false, database: DATABASE_TYPES.POSTGRESQL },
+    ];
+
+    // If no database filter specified, return all configurations
+    if (!databases || databases.length === 0) {
+      return allConfigurations;
+    }
+
+    // Filter configurations based on database selection
+    return allConfigurations.filter(config => {
+      const configKey = this.getConfigurationKey(config);
+      return databases.includes(configKey);
+    });
+  }
+
+  /**
+   * Get the string key for a configuration that matches CLI input
+   */
+  private getConfigurationKey(config: TestConfiguration): string {
+    if (config.database === DATABASE_TYPES.CLICKHOUSE) {
+      return 'clickhouse';
+    } else if (config.database === DATABASE_TYPES.POSTGRESQL) {
+      return config.withIndex ? 'postgresql-indexed' : 'postgresql';
+    }
+    throw new Error(`Unknown configuration: ${JSON.stringify(config)}`);
+  }
+
   async initialize(): Promise<void> {
     console.log('Initializing database connections...');
     
@@ -270,22 +306,22 @@ export class PerformanceTester {
     return results;
   }
 
-  async runAllTests(): Promise<TestResults[]> {
-    const configurations: TestConfiguration[] = [
-      { rowCount: appConfig.test.datasetSize, withIndex: false, database: DATABASE_TYPES.CLICKHOUSE },
-      { rowCount: appConfig.test.datasetSize, withIndex: true, database: DATABASE_TYPES.POSTGRESQL },
-      { rowCount: appConfig.test.datasetSize, withIndex: false, database: DATABASE_TYPES.POSTGRESQL },
-    ];
+  async runAllTests(databases?: string[]): Promise<TestResults[]> {
+    const configurations = this.filterDatabaseConfigurations(databases);
+
+    if (configurations.length === 0) {
+      throw new Error('No matching database configurations found');
+    }
 
     return this.runTestsWithCheckpoints(configurations, 'load');
   }
 
-  async runQueryOnlyTests(iterations: number = 100, timeLimitMinutes: number = 60): Promise<TestResults[]> {
-    const configurations: TestConfiguration[] = [
-      { rowCount: appConfig.test.datasetSize, withIndex: false, database: DATABASE_TYPES.CLICKHOUSE },
-      { rowCount: appConfig.test.datasetSize, withIndex: true, database: DATABASE_TYPES.POSTGRESQL },
-      { rowCount: appConfig.test.datasetSize, withIndex: false, database: DATABASE_TYPES.POSTGRESQL },
-    ];
+  async runQueryOnlyTests(iterations: number = 100, timeLimitMinutes: number = 60, databases?: string[]): Promise<TestResults[]> {
+    const configurations = this.filterDatabaseConfigurations(databases);
+
+    if (configurations.length === 0) {
+      throw new Error('No matching database configurations found');
+    }
 
     return this.runTestsWithCheckpoints(configurations, 'query-only', { iterations, timeLimitMinutes });
   }

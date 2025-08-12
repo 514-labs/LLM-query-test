@@ -18,6 +18,7 @@ program
   .option('-s, --sizes <sizes>', 'comma-separated dataset sizes (e.g., "1000,10000,100000")')
   .option('-t, --time-limit <minutes>', 'time limit in minutes for each query test')
   .option('-o, --output-dir <dir>', 'output directory for results')
+  .option('-d, --databases <databases>', 'comma-separated database types (e.g., "clickhouse,postgresql,postgresql-indexed")')
   .addHelpText('after', `
 
 Configuration:
@@ -27,11 +28,19 @@ Configuration:
     BULK_TEST_SIZES - comma-separated dataset sizes
     BULK_TEST_TIME_LIMIT - time limit in minutes  
     BULK_TEST_OUTPUT_DIR - output directory
+    BULK_TEST_DATABASES - comma-separated database types
+
+  Supported database types:
+    clickhouse           ClickHouse database
+    postgresql           PostgreSQL without index
+    postgresql-indexed   PostgreSQL with index
 
   Examples:
-    npm run bulk-test                                      # Use .env configuration
+    npm run bulk-test                                      # Use .env configuration (all databases)
     npm run bulk-test -- --sizes "1000,10000,100000"     # Override dataset sizes
     npm run bulk-test -- --time-limit 30                  # Override time limit
+    npm run bulk-test -- --databases "clickhouse"         # Test only ClickHouse
+    npm run bulk-test -- --databases "postgresql,postgresql-indexed"  # Test only PostgreSQL variants
 `);
 
 // Parse CLI arguments
@@ -57,6 +66,7 @@ interface BulkTestConfig {
   sizes: number[];
   timeLimit: number; // in minutes
   outputDir: string;
+  databases: string[];
 }
 
 interface TestResult {
@@ -88,6 +98,7 @@ class BulkTester {
     const envSizes = process.env.BULK_TEST_SIZES || '10000,50000,100000,500000,1000000,5000000,10000000,25000000';
     const envTimeLimit = process.env.BULK_TEST_TIME_LIMIT || '60';
     const envOutputDir = process.env.BULK_TEST_OUTPUT_DIR || 'output';
+    const envDatabases = process.env.BULK_TEST_DATABASES || 'clickhouse,postgresql,postgresql-indexed';
 
     // Parse sizes (CLI overrides .env)
     let sizes: number[];
@@ -102,10 +113,32 @@ class BulkTester {
       sizes = [10000, 50000, 100000, 500000, 1000000, 5000000, 10000000, 25000000];
     }
 
+    // Parse databases (CLI overrides .env)
+    let databases: string[];
+    const databasesInput = options.databases || envDatabases;
+    try {
+      databases = databasesInput.split(',').map((d: string) => d.trim().toLowerCase());
+      
+      // Validate database types
+      const validDatabases = ['clickhouse', 'postgresql', 'postgresql-indexed'];
+      const invalidDatabases = databases.filter(db => !validDatabases.includes(db));
+      if (invalidDatabases.length > 0) {
+        throw new Error(`Invalid database types: ${invalidDatabases.join(', ')}`);
+      }
+      
+      if (databases.length === 0) {
+        throw new Error('No databases specified');
+      }
+    } catch (error) {
+      console.warn(`⚠️  Invalid databases format (${error instanceof Error ? error.message : 'Unknown error'}), using all databases`);
+      databases = ['clickhouse', 'postgresql', 'postgresql-indexed'];
+    }
+
     this.config = {
       sizes: sizes.sort((a, b) => a - b), // Sort ascending
       timeLimit: parseInt(options.timeLimit || envTimeLimit),
-      outputDir: options.outputDir || envOutputDir
+      outputDir: options.outputDir || envOutputDir,
+      databases: databases
     };
 
     // Ensure output directory exists
@@ -342,9 +375,9 @@ class BulkTester {
   }
 
   private async runQueryTest(): Promise<{ success: boolean; time: number; error?: string }> {
-    console.log(`\x1b[35mRunning query tests (${this.config.timeLimit}min limit)...\x1b[0m`);
+    console.log(`\x1b[35mRunning query tests (${this.config.timeLimit}min limit, databases: ${this.config.databases.join(',')})...\x1b[0m`);
     
-    const result = await this.runCommand('npm', ['run', 'query-test', '--', `--time-limit=${this.config.timeLimit}`], true); // Filter verbose output
+    const result = await this.runCommand('npm', ['run', 'query-test', '--', `--time-limit=${this.config.timeLimit}`, `--databases=${this.config.databases.join(',')}`], true); // Filter verbose output
     
     if (result.success) {
       console.log(`\x1b[32mQuery tests completed in ${this.formatTime(result.time)}\x1b[0m`);
@@ -505,6 +538,7 @@ class BulkTester {
     console.log(`\x1b[33mBULK TESTING CONFIGURATION:\x1b[0m`);
     console.log(`   Dataset sizes: ${this.config.sizes.map(s => this.formatNumber(s)).join(', ')}`);
     console.log(`   Query time limit: ${this.config.timeLimit} minutes`);
+    console.log(`   Databases: ${this.config.databases.join(', ')}`);
     console.log(`   Total tests: ${this.config.sizes.length}`);
     console.log(`   Session ID: ${this.session.sessionId}\n`);
 

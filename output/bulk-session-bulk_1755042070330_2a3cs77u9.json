@@ -1,0 +1,31 @@
+{
+  "sessionId": "bulk_1755042070330_2a3cs77u9",
+  "startTime": "2025-08-12T23:41:10.330Z",
+  "totalSizes": 7,
+  "completedSizes": 2,
+  "results": [
+    {
+      "size": 10000,
+      "dataGenTime": 3074,
+      "queryTime": 5719,
+      "success": true,
+      "timestamp": "2025-08-12T23:41:10.340Z"
+    },
+    {
+      "size": 50000,
+      "dataGenTime": 11229,
+      "queryTime": 6433,
+      "success": true,
+      "timestamp": "2025-08-12T23:42:06.121Z"
+    },
+    {
+      "size": 100000,
+      "dataGenTime": 0,
+      "queryTime": 0,
+      "success": false,
+      "timestamp": "2025-08-12T23:42:54.959Z",
+      "error": "Failed to start databases"
+    }
+  ],
+  "currentSize": 100000
+}
