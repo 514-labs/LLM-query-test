@@ -55,7 +55,7 @@ npm run bulk-test
 
 - `npm start` - Run Benchmark (data generation + queries)
 - `npm run query-test` - Query-only test with statistical analysis (requires databases running/populated)
-- `npm run bulk-test` - Comprehensive testing across multiple dataset sizes  
+- `npm run bulk-test` - Comprehensive testing (configurable databases and dataset sizes)  
 - `npm run generate-graphs` - Generate performance visualizations
 - `npm run latency-sim` - Interactive LLM conversation delay simulator
 - `npm run clean` - Reset databases and clear results
@@ -77,7 +77,7 @@ LLM simulation: "How many aircraft are in the air on average every minute for th
 
 ## Configuration
 
-Key `.env` settings: `BULK_TEST_SIZES`, `DATASET_SIZE`, `BATCH_SIZE`, `PARALLEL_INSERT`, container resources.
+Key `.env` settings: `BULK_TEST_SIZES`, `BULK_TEST_DATABASES`, `BULK_TEST_CLEAR_RESULTS`, `DATASET_SIZE`, `BATCH_SIZE`, `PARALLEL_INSERT`, container resources.
 
 🔧 **[Full config →](CONFIGURATION.md)**
 

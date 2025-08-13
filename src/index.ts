@@ -38,7 +38,8 @@ program
   .version('1.0.0')
   .option('--query-only', 'Run only query tests (skip data generation)')
   .option('--iterations <number>', 'Number of iterations per test')
-  .option('--time-limit <minutes>', 'Time limit per test in minutes');
+  .option('--time-limit <minutes>', 'Time limit per test in minutes')
+  .option('--databases <databases>', 'Comma-separated database types (clickhouse,postgresql,postgresql-indexed)');
 
 // Parse CLI arguments early to handle --help before any initialization
 program.parse(process.argv);
@@ -56,6 +57,33 @@ async function main() {
   const iterations = parseInt(options.iterations || config.test.queryIterations.toString());
   const timeLimitMinutes = parseInt(options.timeLimit || config.test.queryTimeLimit.toString());
   
+  // Parse databases selection
+  let databases: string[] | undefined;
+  if (options.databases) {
+    try {
+      const parsedDatabases = options.databases.split(',').map((d: string) => d.trim().toLowerCase());
+      
+      // Validate database types
+      const validDatabases = ['clickhouse', 'postgresql', 'postgresql-indexed'];
+      const invalidDatabases = parsedDatabases.filter((db: string) => !validDatabases.includes(db));
+      if (invalidDatabases.length > 0) {
+        console.error(`Invalid database types: ${invalidDatabases.join(', ')}`);
+        console.error(`Valid options: ${validDatabases.join(', ')}`);
+        process.exit(1);
+      }
+      
+      if (parsedDatabases.length === 0) {
+        console.error('No databases specified');
+        process.exit(1);
+      }
+      
+      databases = parsedDatabases;
+    } catch (error) {
+      console.error(`Invalid databases format: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      process.exit(1);
+    }
+  }
+  
   const tester = new PerformanceTester();
   
   try {
@@ -64,13 +92,16 @@ async function main() {
     
     if (queryOnly) {
       console.log(`Running query-only tests with ${iterations} iterations per configuration (${timeLimitMinutes}min time limit)`);
+      if (databases) {
+        console.log(`Testing databases: ${databases.join(', ')}`);
+      }
     }
     
     await tester.initialize();
     
     const results = queryOnly 
-      ? await tester.runQueryOnlyTests(iterations, timeLimitMinutes)
-      : await tester.runAllTests();
+      ? await tester.runQueryOnlyTests(iterations, timeLimitMinutes, databases)
+      : await tester.runAllTests(databases);
     
     ResultsReporter.printResults(results);
     
