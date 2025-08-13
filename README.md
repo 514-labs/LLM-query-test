@@ -77,7 +77,7 @@ LLM simulation: "How many aircraft are in the air on average every minute for th
 
 ## Configuration
 
-Key `.env` settings: `BULK_TEST_SIZES`, `DATASET_SIZE`, `BATCH_SIZE`, `PARALLEL_INSERT`, container resources.
+Key `.env` settings: `BULK_TEST_SIZES`, `BULK_TEST_DATABASES`, `BULK_TEST_CLEAR_RESULTS`, `DATASET_SIZE`, `BATCH_SIZE`, `PARALLEL_INSERT`, container resources.
 
 🔧 **[Full config →](CONFIGURATION.md)**
 

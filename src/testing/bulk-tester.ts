@@ -19,7 +19,6 @@ program
   .option('-t, --time-limit <minutes>', 'time limit in minutes for each query test')
   .option('-o, --output-dir <dir>', 'output directory for results')
   .option('-d, --databases <databases>', 'comma-separated database types (e.g., "clickhouse,postgresql,postgresql-indexed")')
-  .option('-i, --interactive', 'interactively select databases to test and manage results')
   .addHelpText('after', `
 
 Configuration:
@@ -43,7 +42,6 @@ Configuration:
     npm run bulk-test -- --time-limit 30                  # Override time limit
     npm run bulk-test -- --databases "clickhouse"         # Test only ClickHouse
     npm run bulk-test -- --databases "postgresql,postgresql-indexed"  # Test only PostgreSQL variants
-    npm run bulk-test -- --interactive                    # Interactive mode: select databases and manage results
     BULK_TEST_CLEAR_RESULTS=true npm run bulk-test        # Clear results automatically (for CI/CD)
 `);
 
@@ -71,7 +69,6 @@ interface BulkTestConfig {
   timeLimit: number; // in minutes
   outputDir: string;
   databases: string[];
-  interactive?: boolean;
   clearResults?: boolean; // from env variable only
 }
 
@@ -146,7 +143,6 @@ class BulkTester {
       timeLimit: parseInt(options.timeLimit || envTimeLimit),
       outputDir: options.outputDir || envOutputDir,
       databases: databases,
-      interactive: options.interactive,
       clearResults: envClearResults
     };
 
@@ -170,95 +166,8 @@ class BulkTester {
     this.saveSession();
   }
 
-  private async promptUser(question: string): Promise<boolean> {
-    const rl = readline.createInterface({
-      input: process.stdin,
-      output: process.stdout
-    });
 
-    return new Promise((resolve) => {
-      rl.question(question, (answer) => {
-        rl.close();
-        const response = answer.toLowerCase().trim();
-        resolve(response === 'y' || response === 'yes');
-      });
-    });
-  }
 
-  private async promptForDatabases(): Promise<string[]> {
-    console.log('\n\x1b[36mSelect databases to test:\x1b[0m');
-    console.log('1) ClickHouse only');
-    console.log('2) PostgreSQL (no index) only');
-    console.log('3) PostgreSQL (with index) only');
-    console.log('4) Both PostgreSQL variants');
-    console.log('5) All databases (default)');
-    console.log('6) Custom selection');
-    
-    const rl = readline.createInterface({
-      input: process.stdin,
-      output: process.stdout
-    });
-
-    return new Promise((resolve) => {
-      rl.question('\x1b[36mEnter your choice (1-6) [5]: \x1b[0m', (answer) => {
-        rl.close();
-        const choice = answer.trim() || '5';
-        
-        switch(choice) {
-          case '1':
-            resolve(['clickhouse']);
-            break;
-          case '2':
-            resolve(['postgresql']);
-            break;
-          case '3':
-            resolve(['postgresql-indexed']);
-            break;
-          case '4':
-            resolve(['postgresql', 'postgresql-indexed']);
-            break;
-          case '5':
-            resolve(['clickhouse', 'postgresql', 'postgresql-indexed']);
-            break;
-          case '6':
-            // For custom selection, prompt again
-            this.promptForCustomDatabases().then(resolve);
-            break;
-          default:
-            console.log('Invalid choice, using all databases');
-            resolve(['clickhouse', 'postgresql', 'postgresql-indexed']);
-        }
-      });
-    });
-  }
-
-  private async promptForCustomDatabases(): Promise<string[]> {
-    const rl = readline.createInterface({
-      input: process.stdin,
-      output: process.stdout
-    });
-
-    return new Promise((resolve) => {
-      rl.question('\x1b[36mEnter databases (comma-separated): \x1b[0m', (answer) => {
-        rl.close();
-        const databases = answer.split(',').map(d => d.trim().toLowerCase());
-        const validDatabases = ['clickhouse', 'postgresql', 'postgresql-indexed'];
-        const valid = databases.filter(db => validDatabases.includes(db));
-        const invalid = databases.filter(db => !validDatabases.includes(db));
-        
-        if (invalid.length > 0) {
-          console.log(`\x1b[31mInvalid databases: ${invalid.join(', ')}\x1b[0m`);
-          console.log('Using all databases instead');
-          resolve(['clickhouse', 'postgresql', 'postgresql-indexed']);
-        } else if (valid.length === 0) {
-          console.log('No valid databases specified, using all databases');
-          resolve(['clickhouse', 'postgresql', 'postgresql-indexed']);
-        } else {
-          resolve(valid);
-        }
-      });
-    });
-  }
 
   private async checkAndCleanPreviousResults(): Promise<void> {
     // Check for existing result files
@@ -287,12 +196,10 @@ class BulkTester {
       if (this.config.clearResults) {
         console.log('\x1b[36mClearing existing results (BULK_TEST_CLEAR_RESULTS=true)\x1b[0m');
         shouldDelete = true;
-      } else if (this.config.interactive) {
-        // Only prompt in interactive mode
-        shouldDelete = await this.promptUser('\x1b[36mDelete previous results before starting? (y/N): \x1b[0m');
       } else {
         // Default: keep results (safe for automation)
         console.log('\x1b[36mKeeping existing results. New results will be timestamped separately.\x1b[0m');
+        shouldDelete = false;
       }
       
       if (shouldDelete) {
@@ -629,14 +536,6 @@ class BulkTester {
     // Check for previous results and offer to clean them
     await this.checkAndCleanPreviousResults();
     
-    // Handle interactive database selection
-    // Only prompt if:
-    // 1. Interactive flag is set
-    // 2. No databases specified via CLI
-    // 3. No databases specified via env (or using default)
-    if (this.config.interactive && !options.databases && (!process.env.BULK_TEST_DATABASES || process.env.BULK_TEST_DATABASES === '')) {
-      this.config.databases = await this.promptForDatabases();
-    }
     
     console.log(`\x1b[33mBULK TESTING CONFIGURATION:\x1b[0m`);
     console.log(`   Dataset sizes: ${this.config.sizes.map(s => this.formatNumber(s)).join(', ')}`);
