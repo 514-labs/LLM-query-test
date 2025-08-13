@@ -14,10 +14,10 @@ coverage/
 tests/*.js
 tests/*.js.map
 
-# Output files and checkpoints (runtime generated)
-output/
-**/checkpoints/
-*.checkpoint.json
+# Runtime generated files that should not be committed
+# Note: Existing output files are preserved for historical reference
+# but new output files should not be added to the repository
+# Future benchmark results should be shared via GitHub releases or other means
 
 # Environment variables
 .env.local
