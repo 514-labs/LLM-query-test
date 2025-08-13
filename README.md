@@ -55,7 +55,7 @@ npm run bulk-test
 
 - `npm start` - Run Benchmark (data generation + queries)
 - `npm run query-test` - Query-only test with statistical analysis (requires databases running/populated)
-- `npm run bulk-test` - Comprehensive testing across multiple dataset sizes  
+- `npm run bulk-test` - Comprehensive testing (configurable databases and dataset sizes)  
 - `npm run generate-graphs` - Generate performance visualizations
 - `npm run latency-sim` - Interactive LLM conversation delay simulator
 - `npm run clean` - Reset databases and clear results

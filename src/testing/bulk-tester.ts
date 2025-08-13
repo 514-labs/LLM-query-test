@@ -19,6 +19,8 @@ program
   .option('-t, --time-limit <minutes>', 'time limit in minutes for each query test')
   .option('-o, --output-dir <dir>', 'output directory for results')
   .option('-d, --databases <databases>', 'comma-separated database types (e.g., "clickhouse,postgresql,postgresql-indexed")')
+  .option('--keep-results', 'keep existing result files')
+  .option('--clear-results', 'clear existing result files without prompting')
   .addHelpText('after', `
 
 Configuration:
@@ -41,6 +43,8 @@ Configuration:
     npm run bulk-test -- --time-limit 30                  # Override time limit
     npm run bulk-test -- --databases "clickhouse"         # Test only ClickHouse
     npm run bulk-test -- --databases "postgresql,postgresql-indexed"  # Test only PostgreSQL variants
+    npm run bulk-test -- --keep-results                   # Keep existing result files
+    npm run bulk-test -- --clear-results                  # Clear existing results without prompting
 `);
 
 // Parse CLI arguments
@@ -67,6 +71,8 @@ interface BulkTestConfig {
   timeLimit: number; // in minutes
   outputDir: string;
   databases: string[];
+  keepResults?: boolean;
+  clearResults?: boolean;
 }
 
 interface TestResult {
@@ -138,7 +144,9 @@ class BulkTester {
       sizes: sizes.sort((a, b) => a - b), // Sort ascending
       timeLimit: parseInt(options.timeLimit || envTimeLimit),
       outputDir: options.outputDir || envOutputDir,
-      databases: databases
+      databases: databases,
+      keepResults: options.keepResults,
+      clearResults: options.clearResults
     };
 
     // Ensure output directory exists
@@ -196,7 +204,20 @@ class BulkTester {
       }
       
       console.log('');
-      const shouldDelete = await this.promptUser('\x1b[36mDelete previous results before starting? (y/N): \x1b[0m');
+      
+      let shouldDelete = false;
+      
+      // Check for explicit flags first
+      if (this.config.keepResults) {
+        console.log('\x1b[36mKeeping existing results (--keep-results flag set)\x1b[0m');
+        shouldDelete = false;
+      } else if (this.config.clearResults) {
+        console.log('\x1b[36mClearing existing results (--clear-results flag set)\x1b[0m');
+        shouldDelete = true;
+      } else {
+        // No flags set, prompt the user
+        shouldDelete = await this.promptUser('\x1b[36mDelete previous results before starting? (y/N): \x1b[0m');
+      }
       
       if (shouldDelete) {
         console.log('\x1b[33mCleaning up previous results...\x1b[0m');
