@@ -20,7 +20,8 @@
     "test:smoke": "npm run build && node dist/tests/smoke.test.js",
     "help": "npm run build && node dist/src/index.js --help",
     "help:start": "echo 'npm start [-- options]' && echo 'Options: --query-only, --iterations <N>, --time-limit <N>' && echo 'Examples:' && echo '  npm start -- --query-only --iterations 50' && echo '  npm start -- --time-limit 120'",
-    "help:query-test": "echo 'npm run query-test [-- options]' && echo 'Options: --iterations <N>, --time-limit <N>' && echo 'Examples:' && echo '  npm run query-test -- --iterations 200' && echo '  npm run query-test -- --time-limit 30'"
+    "help:query-test": "echo 'npm run query-test [-- options]' && echo 'Options: --iterations <N>, --time-limit <N>' && echo 'Examples:' && echo '  npm run query-test -- --iterations 200' && echo '  npm run query-test -- --time-limit 30'",
+    "help:bulk-test": "echo 'npm run bulk-test [-- options]' && echo 'Options: --databases <list>, --sizes <list>, --time-limit <N>, --interactive' && echo 'Examples:' && echo '  npm run bulk-test -- --databases clickhouse' && echo '  npm run bulk-test -- --interactive' && echo '  BULK_TEST_CLEAR_RESULTS=true npm run bulk-test'"
   },
   "dependencies": {
     "@clickhouse/client": "^0.2.5",
