@@ -14,6 +14,7 @@ program
   .description('Start ClickHouse and PostgreSQL database containers for performance testing')
   .version('1.0.0')
   .option('--cleanup-first', 'cleanup existing containers before starting', false)
+  .option('--databases <databases>', 'comma-separated database types to start (clickhouse,postgresql,postgresql-indexed)')
   .addHelpText('after', `
 
 This tool starts the required database containers:
@@ -31,6 +32,7 @@ Configuration is read from .env file:
 Examples:
   npm run start-dbs                    # Start with existing containers
   npm run start-dbs -- --cleanup-first # Remove existing containers first
+  npm run start-dbs -- --databases clickhouse # Start only ClickHouse
 `);
 
 // Parse CLI arguments
@@ -156,7 +158,28 @@ class DatabaseStarter {
     console.log(`   PostgreSQL: ${postgresMemory} RAM, ${postgresCpus} CPUs`);
     console.log(`   PostgreSQL (indexed): ${postgresIndexedMemory} RAM, ${postgresIndexedCpus} CPUs\n`);
 
-    const configs = this.getContainerConfigs();
+    let configs = this.getContainerConfigs();
+
+    // Optionally filter by databases
+    if (options.databases) {
+      const requested = String(options.databases)
+        .split(',')
+        .map((d: string) => d.trim().toLowerCase());
+
+      const nameMatches = (cfg: ContainerConfig): boolean => {
+        if (cfg.name === 'clickhouse-server') return requested.includes('clickhouse');
+        if (cfg.name === 'postgres') return requested.includes('postgresql');
+        if (cfg.name === 'postgres-indexed') return requested.includes('postgresql-indexed');
+        return false;
+      };
+
+      configs = configs.filter(nameMatches);
+
+      if (configs.length === 0) {
+        console.error('No valid databases selected for startup.');
+        process.exit(1);
+      }
+    }
 
     try {
       // Optionally stop and remove existing containers
@@ -176,11 +199,17 @@ class DatabaseStarter {
         await this.executeCommand(command, `Starting ${config.name}`);
       }
 
-      console.log('\n🎉 All database containers started successfully!');
+      console.log('\n🎉 Selected database containers started successfully!');
       console.log('\n📋 Container Status:');
-      console.log('   • ClickHouse: http://localhost:8123');
-      console.log(`   • PostgreSQL (no index): localhost:${postgresPort}`);
-      console.log(`   • PostgreSQL (with index): localhost:${postgresIndexedPort}`);
+      if (configs.some(c => c.name === 'clickhouse-server')) {
+        console.log('   • ClickHouse: http://localhost:8123');
+      }
+      if (configs.some(c => c.name === 'postgres')) {
+        console.log(`   • PostgreSQL (no index): localhost:${postgresPort}`);
+      }
+      if (configs.some(c => c.name === 'postgres-indexed')) {
+        console.log(`   • PostgreSQL (with index): localhost:${postgresIndexedPort}`);
+      }
       
       console.log('\n⏳ Waiting 10 seconds for containers to be ready...');
       await new Promise(resolve => setTimeout(resolve, 10000));
