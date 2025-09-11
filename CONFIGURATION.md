@@ -25,6 +25,14 @@ POSTGRES_INDEXED_PORT=5433
 POSTGRES_INDEXED_DATABASE=performance_test
 POSTGRES_INDEXED_USERNAME=postgres
 POSTGRES_INDEXED_PASSWORD=postgres
+
+# PG Hydra (optional)
+# If you have a PG Hydra deployment, point these to the router
+PG_HYDRA_HOST=localhost
+PG_HYDRA_PORT=5434
+PG_HYDRA_DATABASE=performance_test
+PG_HYDRA_USERNAME=postgres
+PG_HYDRA_PASSWORD=postgres
 ```
 
 ## Container Resources
@@ -73,6 +81,7 @@ npm run query-test -- --time-limit 120
 npm start -- --query-only --iterations 50
 
 # Bulk tests
+npm run bulk-test -- --databases "clickhouse,postgresql,postgresql-indexed,pg_hydra,pg_hydra-sharded"
 npm run bulk-test -- --sizes "1000,10000,100000"
 npm run bulk-test -- --time-limit 30
 npm run bulk-test -- --output-dir my-results
@@ -84,6 +93,7 @@ npm run bulk-test -- --output-dir my-results
 - **Auto-resume**: Ctrl+C safe, automatic checkpoint recovery
 - **Memory monitoring**: Warnings at 85%, critical at 95%
 - **Latency simulator**: `npm run latency-sim` - interactive performance demo
+- **PG Hydra support**: Use `--databases pg_hydra` (single node) or `--databases pg_hydra-sharded`
 
 ## Container Management
 

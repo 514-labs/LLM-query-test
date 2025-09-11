@@ -11,7 +11,7 @@ const program = new Command();
 
 program
   .name('npm run start-dbs')
-  .description('Start ClickHouse and PostgreSQL database containers for performance testing')
+  .description('Start ClickHouse, PostgreSQL, and optional PG Hydra containers for performance testing')
   .version('1.0.0')
   .option('--cleanup-first', 'cleanup existing containers before starting', false)
   .addHelpText('after', `
@@ -20,6 +20,7 @@ This tool starts the required database containers:
   • ClickHouse on port 8123
   • PostgreSQL (no indexes) on port 5432  
   • PostgreSQL (with indexes) on port 5433
+  • (Optional) PG Hydra router/shards if you provide your own images
 
 Configuration is read from .env file:
   Environment variables:
@@ -27,6 +28,7 @@ Configuration is read from .env file:
     POSTGRES_MEMORY/CPUS - PostgreSQL container resources  
     POSTGRES_INDEXED_MEMORY/CPUS - PostgreSQL (indexed) container resources
     POSTGRES_PORT/POSTGRES_INDEXED_PORT - Custom port assignments
+    PG_HYDRA_HOST/PORT - External PG Hydra endpoint (if running separately)
 
 Examples:
   npm run start-dbs                    # Start with existing containers

@@ -35,6 +35,24 @@ export const config = {
     memory: validator.validateMemory('POSTGRES_INDEXED_MEMORY', '4g'),
     cpus: validator.validateCpus('POSTGRES_INDEXED_CPUS', '2'),
   },
+  pgHydra: {
+    host: validator.validateString('PG_HYDRA_HOST', 'localhost'),
+    port: validator.validatePort('PG_HYDRA_PORT', 5434),
+    database: validator.validateString('PG_HYDRA_DATABASE', 'performance_test'),
+    username: validator.validateString('PG_HYDRA_USERNAME', 'postgres'),
+    password: validator.validateString('PG_HYDRA_PASSWORD', 'postgres'),
+    memory: validator.validateMemory('PG_HYDRA_MEMORY', '4g'),
+    cpus: validator.validateCpus('PG_HYDRA_CPUS', '2'),
+  },
+  pgHydraSharded: {
+    host: validator.validateString('PG_HYDRA_SHARDED_HOST', 'localhost'),
+    port: validator.validatePort('PG_HYDRA_SHARDED_PORT', 5435),
+    database: validator.validateString('PG_HYDRA_SHARDED_DATABASE', 'performance_test'),
+    username: validator.validateString('PG_HYDRA_SHARDED_USERNAME', 'postgres'),
+    password: validator.validateString('PG_HYDRA_SHARDED_PASSWORD', 'postgres'),
+    memory: validator.validateMemory('PG_HYDRA_SHARDED_MEMORY', '4g'),
+    cpus: validator.validateCpus('PG_HYDRA_SHARDED_CPUS', '2'),
+  },
   test: {
     datasetSize: validator.validateInteger('DATASET_SIZE', 10000000, 1000, 100000000, 'Dataset size (1000-100M records)'),
     batchSize: validator.validateInteger('BATCH_SIZE', 50000, 1000, 1000000, 'Batch size (1K-1M records)'),
@@ -50,6 +68,7 @@ validator.validatePortConflicts({
   'CLICKHOUSE_PORT': config.clickhouse.port,
   'POSTGRES_PORT': config.postgres.port,
   'POSTGRES_INDEXED_PORT': config.postgresIndexed.port,
+  'PG_HYDRA_PORT': config.pgHydra.port,
 });
 
 // Throw error if validation failed
