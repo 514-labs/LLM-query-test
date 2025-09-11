@@ -39,7 +39,7 @@ program
   .option('--query-only', 'Run only query tests (skip data generation)')
   .option('--iterations <number>', 'Number of iterations per test')
   .option('--time-limit <minutes>', 'Time limit per test in minutes')
-  .option('--databases <databases>', 'Comma-separated database types (clickhouse,postgresql,postgresql-indexed)');
+  .option('--databases <databases>', 'Comma-separated database types (clickhouse,postgresql,postgresql-indexed,pg_hydra,pg_hydra-sharded)');
 
 // Parse CLI arguments early to handle --help before any initialization
 program.parse(process.argv);
@@ -64,7 +64,7 @@ async function main() {
       const parsedDatabases = options.databases.split(',').map((d: string) => d.trim().toLowerCase());
       
       // Validate database types
-      const validDatabases = ['clickhouse', 'postgresql', 'postgresql-indexed'];
+      const validDatabases = ['clickhouse', 'postgresql', 'postgresql-indexed', 'pg_hydra', 'pg_hydra-sharded'];
       const invalidDatabases = parsedDatabases.filter((db: string) => !validDatabases.includes(db));
       if (invalidDatabases.length > 0) {
         console.error(`Invalid database types: ${invalidDatabases.join(', ')}`);

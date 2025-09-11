@@ -1,5 +1,6 @@
 import { ClickHouseDatabase } from '../database/clickhouse';
 import { PostgreSQLDatabase } from '../database/postgresql';
+import { PGHydraDatabase } from '../database/pg-hydra';
 import { DataGenerator, AircraftTrackingRecord } from '../data/generator';
 import { getQueries, executeQuery, QueryResult } from './queries';
 import { config as appConfig, config } from '../config/config';
@@ -10,6 +11,7 @@ export interface TestConfiguration {
   rowCount: number;
   withIndex: boolean;
   database: DatabaseType;
+  sharded?: boolean;
 }
 
 export interface TestResults {
@@ -37,12 +39,16 @@ export class PerformanceTester {
   private postgresql: PostgreSQLDatabase;
   private postgresqlIndexed: PostgreSQLDatabase;
   private dataGenerator: DataGenerator;
+  private pgHydra: PGHydraDatabase;
+  private pgHydraSharded: PGHydraDatabase;
 
   constructor(seed?: string) {
     this.clickhouse = new ClickHouseDatabase();
     this.postgresql = new PostgreSQLDatabase();
     this.postgresqlIndexed = new PostgreSQLDatabase(config.postgresIndexed);
     this.dataGenerator = new DataGenerator(seed || process.env.BENCHMARK_SEED);
+    this.pgHydra = new PGHydraDatabase(config.pgHydra);
+    this.pgHydraSharded = new PGHydraDatabase(config.pgHydra, true);
   }
 
   /**
@@ -55,6 +61,8 @@ export class PerformanceTester {
       { rowCount: appConfig.test.datasetSize, withIndex: false, database: DATABASE_TYPES.CLICKHOUSE },
       { rowCount: appConfig.test.datasetSize, withIndex: true, database: DATABASE_TYPES.POSTGRESQL },
       { rowCount: appConfig.test.datasetSize, withIndex: false, database: DATABASE_TYPES.POSTGRESQL },
+      { rowCount: appConfig.test.datasetSize, withIndex: false, database: DATABASE_TYPES.PG_HYDRA, sharded: false },
+      { rowCount: appConfig.test.datasetSize, withIndex: false, database: DATABASE_TYPES.PG_HYDRA, sharded: true },
     ];
 
     // If no database filter specified, return all configurations
@@ -77,6 +85,8 @@ export class PerformanceTester {
       return 'clickhouse';
     } else if (config.database === DATABASE_TYPES.POSTGRESQL) {
       return config.withIndex ? 'postgresql-indexed' : 'postgresql';
+    } else if (config.database === DATABASE_TYPES.PG_HYDRA) {
+      return config.sharded ? 'pg_hydra-sharded' : 'pg_hydra';
     }
     throw new Error(`Unknown configuration: ${JSON.stringify(config)}`);
   }
@@ -88,10 +98,14 @@ export class PerformanceTester {
     await this.clickhouse.ensureDatabaseExists();
     await this.postgresql.ensureDatabaseExists();
     await this.postgresqlIndexed.ensureDatabaseExists();
+    await this.pgHydra.ensureDatabaseExists();
+    await this.pgHydraSharded.ensureDatabaseExists();
     
     await this.clickhouse.connect();
     await this.postgresql.connect();
     await this.postgresqlIndexed.connect();
+    await this.pgHydra.connect();
+    await this.pgHydraSharded.connect();
     console.log('Database connections established');
   }
 
@@ -100,6 +114,8 @@ export class PerformanceTester {
     await this.clickhouse.disconnect();
     await this.postgresql.disconnect();
     await this.postgresqlIndexed.disconnect();
+    await this.pgHydra.disconnect();
+    await this.pgHydraSharded.disconnect();
     console.log('Database connections closed');
   }
 
@@ -134,8 +150,12 @@ export class PerformanceTester {
     const setupTime = Number(setupEndTime - setupStartTime) / 1_000_000;
 
     // Warmup phase
-    const database = config.database === DATABASE_TYPES.CLICKHOUSE ? this.clickhouse : 
-                    (config.withIndex ? this.postgresqlIndexed : this.postgresql);
+    const database =
+      config.database === DATABASE_TYPES.CLICKHOUSE
+        ? this.clickhouse
+        : config.database === DATABASE_TYPES.PG_HYDRA
+          ? (config.sharded ? this.pgHydraSharded : this.pgHydra)
+          : (config.withIndex ? this.postgresqlIndexed : this.postgresql);
     await this.warmupDatabase(database, `${config.database}${config.withIndex ? '-indexed' : ''}`);
 
     // Query execution phase
@@ -155,8 +175,12 @@ export class PerformanceTester {
   }
 
   private async setupTest(config: TestConfiguration): Promise<void> {
-    const database = config.database === DATABASE_TYPES.CLICKHOUSE ? this.clickhouse : 
-                    (config.withIndex ? this.postgresqlIndexed : this.postgresql);
+    const database =
+      config.database === DATABASE_TYPES.CLICKHOUSE
+        ? this.clickhouse
+        : config.database === DATABASE_TYPES.PG_HYDRA
+          ? (config.sharded ? this.pgHydraSharded : this.pgHydra)
+          : (config.withIndex ? this.postgresqlIndexed : this.postgresql);
     
     console.log('Dropping existing table...');
     await database.dropTable();
@@ -292,8 +316,12 @@ export class PerformanceTester {
   }
 
   private async executeQueries(config: TestConfiguration): Promise<QueryResult[]> {
-    const database = config.database === DATABASE_TYPES.CLICKHOUSE ? this.clickhouse : 
-                    (config.withIndex ? this.postgresqlIndexed : this.postgresql);
+    const database =
+      config.database === DATABASE_TYPES.CLICKHOUSE
+        ? this.clickhouse
+        : config.database === DATABASE_TYPES.PG_HYDRA
+          ? (config.sharded ? this.pgHydraSharded : this.pgHydra)
+          : (config.withIndex ? this.postgresqlIndexed : this.postgresql);
     const queries = getQueries();
     const results: QueryResult[] = [];
 
