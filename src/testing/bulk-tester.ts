@@ -337,9 +337,9 @@ class BulkTester {
     });
   }
 
-  private async startDatabases(): Promise<boolean> {
-    console.log('\x1b[33mStarting database containers...\x1b[0m');
-    const result = await this.runCommand('npm', ['run', 'start-dbs', '--', '--cleanup-first']);
+  private async startDatabases(database: string): Promise<boolean> {
+    console.log(`\x1b[33mStarting database container for ${database}...\x1b[0m`);
+    const result = await this.runCommand('npm', ['run', 'start-dbs', '--', '--cleanup-first', `--databases=${database}`]);
     
     if (result.success) {
       console.log('\x1b[32mDatabases started successfully\x1b[0m');
@@ -358,13 +358,24 @@ class BulkTester {
     console.log('\x1b[32mDatabases stopped\x1b[0m');
   }
 
-  private async runDataGeneration(size: number): Promise<{ success: boolean; time: number; error?: string }> {
-    console.log(`\x1b[34mGenerating ${this.formatNumber(size)} records...\x1b[0m`);
+  private async killDatabase(database: string): Promise<void> {
+    const name = database === 'clickhouse' ? 'clickhouse-server'
+      : database === 'postgresql' ? 'postgres'
+      : database === 'postgresql-indexed' ? 'postgres-indexed'
+      : '';
+    if (!name) return;
+    console.log(`\x1b[33mStopping ${database} container...\x1b[0m`);
+    await this.runCommand('docker', ['rm', '-f', name]);
+    console.log(`\x1b[32m${database} stopped\x1b[0m`);
+  }
+
+  private async runDataGeneration(size: number, database: string): Promise<{ success: boolean; time: number; error?: string }> {
+    console.log(`\x1b[34mGenerating ${this.formatNumber(size)} records for ${database}...\x1b[0m`);
     
     // Set environment variable for this test
     process.env.DATASET_SIZE = size.toString();
     
-    const result = await this.runCommand('npm', ['start'], true); // Filter verbose output
+    const result = await this.runCommand('npm', ['start', '--', `--databases=${database}`], true); // Filter verbose output
     
     if (result.success) {
       console.log(`\x1b[32mData generation completed in ${this.formatTime(result.time)}\x1b[0m`);
@@ -375,10 +386,10 @@ class BulkTester {
     return result;
   }
 
-  private async runQueryTest(): Promise<{ success: boolean; time: number; error?: string }> {
-    console.log(`\x1b[35mRunning query tests (${this.config.timeLimit}min limit, databases: ${this.config.databases.join(',')})...\x1b[0m`);
+  private async runQueryTest(database: string): Promise<{ success: boolean; time: number; error?: string }> {
+    console.log(`\x1b[35mRunning query tests (${this.config.timeLimit}min limit) for ${database}...\x1b[0m`);
     
-    const result = await this.runCommand('npm', ['run', 'query-test', '--', `--time-limit=${this.config.timeLimit}`, `--databases=${this.config.databases.join(',')}`], true); // Filter verbose output
+    const result = await this.runCommand('npm', ['run', 'query-test', '--', `--time-limit=${this.config.timeLimit}`, `--databases=${database}`], true); // Filter verbose output
     
     if (result.success) {
       console.log(`\x1b[32mQuery tests completed in ${this.formatTime(result.time)}\x1b[0m`);
@@ -572,42 +583,46 @@ class BulkTester {
           timestamp: new Date().toISOString()
         };
 
-        // Step 1: Start databases
-        if (!await this.startDatabases()) {
-          testResult.error = 'Failed to start databases';
-          this.session.results.push(testResult);
-          this.saveSession();
-          continue;
-        }
+        // Serialize per database: start -> load -> query -> kill
+        for (const database of this.config.databases) {
+          if (shutdownRequested) break;
 
-        try {
-          // Step 2: Generate data
-          const dataResult = await this.runDataGeneration(size);
-          testResult.dataGenTime = dataResult.time;
-          
-          if (!dataResult.success) {
-            testResult.error = `Data generation failed: ${dataResult.error}`;
+          // Step 1: Start selected database
+          if (!await this.startDatabases(database)) {
+            testResult.error = `Failed to start database: ${database}`;
             this.session.results.push(testResult);
             this.saveSession();
             continue;
           }
 
-          // Step 3: Run query tests
-          const queryResult = await this.runQueryTest();
-          testResult.queryTime = queryResult.time;
-          
-          if (!queryResult.success) {
-            testResult.error = `Query test failed: ${queryResult.error}`;
-          } else {
-            testResult.success = true;
+          try {
+            // Step 2: Generate data for this database
+            const dataResult = await this.runDataGeneration(size, database);
+            testResult.dataGenTime += dataResult.time;
             
-            // Step 4: Generate graphs after successful test
-            await this.generateGraphs();
-          }
+            if (!dataResult.success) {
+              testResult.error = `Data generation failed for ${database}: ${dataResult.error}`;
+              this.session.results.push(testResult);
+              this.saveSession();
+              continue;
+            }
 
-        } finally {
-          // Step 5: Always kill databases
-          await this.killDatabases();
+            // Step 3: Run query tests for this database
+            const queryResult = await this.runQueryTest(database);
+            testResult.queryTime += queryResult.time;
+            
+            if (!queryResult.success) {
+              testResult.error = `Query test failed for ${database}: ${queryResult.error}`;
+            } else {
+              testResult.success = true;
+              
+              // Step 4: Generate graphs after successful test
+              await this.generateGraphs();
+            }
+          } finally {
+            // Step 5: Always kill this database only
+            await this.killDatabase(database);
+          }
         }
 
         this.session.results.push(testResult);
